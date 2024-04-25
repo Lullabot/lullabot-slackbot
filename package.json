@@ -18,7 +18,8 @@
     },
     "dependencies": {
         "botkit": "^0.6.9",
-        "datejs": "^1.0.0-rc3"
+        "datejs": "^1.0.0-rc3",
+        "dotenv-defaults": "^5.0.2"
     },
     "devDependencies": {
         "eslint": "^4.16.0",

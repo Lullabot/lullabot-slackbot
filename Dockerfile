@@ -4,6 +4,5 @@ WORKDIR /app
 COPY . .
 RUN yarn install --verbose
 
-EXPOSE 3000
-CMD ["node", "index.js"]
+CMD ["yarn", "start"]
 

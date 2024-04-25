@@ -3,9 +3,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - .env.defaults
+      - .env
     environment:
       - NODE_ENV=production
     volumes:
       - data:/app/data
+
 volumes:
   data:

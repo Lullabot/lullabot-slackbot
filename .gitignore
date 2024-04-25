@@ -1,20 +1,2 @@
-# NPM / Yarn
-node_modules
-npm-debug.log
-.npm
 yarn-error.log
-
-# Various temp files.
-*.DS_Store
-*.swp
-*.swo
-.vagrant
-
-# Local config file(s)
-/config.js
-
-# Jetbrains IDE stuff
-.idea
-
-# Visual Code Studio
-.vscode
+.env
