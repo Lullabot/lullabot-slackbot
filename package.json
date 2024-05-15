@@ -17,7 +17,7 @@
         "test": "eslint --max-warnings=0 ."
     },
     "dependencies": {
-        "botkit": "^0.6.9",
+        "botkit": "^4.0.0",
         "datejs": "^1.0.0-rc3",
         "dotenv-defaults": "^5.0.2"
     },
