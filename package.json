@@ -28,7 +28,7 @@
         "eslint-plugin-import": "^2.8.0",
         "eslint-plugin-json": "^1.2.0",
         "eslint-plugin-prettier": "^2.5.0",
-        "fast-csv": "^2.4.1",
+        "fast-csv": "^5.0.0",
         "prettier": "^1.10.2"
     },
     "prettier": {
