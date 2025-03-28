@@ -21,7 +21,11 @@ const helpText: HelpText = {
             { pattern: '@bot X is Y', description: 'Set a factoid' },
             { pattern: '@bot X is <reply>Y', description: 'Set with direct reply' },
             { pattern: '@bot forget X', description: 'Delete a factoid' },
-            { pattern: '!factoid: list', description: 'List all factoids' }
+            { pattern: '!factoid: list', description: 'List all factoids' },
+            { pattern: '!factoid: cleanup', description: 'Find and remove invalid factoids' },
+            { pattern: '!factoid: backup', description: 'Create a backup of all factoids' },
+            { pattern: '!factoid: backups', description: 'List available factoid backups' },
+            { pattern: '!factoid: restore FILENAME', description: 'Restore factoids from a backup file' }
         ]
     },
     karma: {
