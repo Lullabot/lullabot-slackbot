@@ -686,7 +686,43 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             
             // Ask for confirmation before removing
             await say({
-                text: `I found ${invalidFactoids.length} factoids that don't match valid patterns.\nThese will be removed: \`${invalidFactoids.join('`, `')}\`\n\nReply with "!factoid: confirm-cleanup" to proceed or "!factoid: cancel-cleanup" to cancel.`,
+                blocks: [
+                    {
+                        type: "section",
+                        text: {
+                            type: "mrkdwn",
+                            text: `I found ${invalidFactoids.length} factoids that don't match valid patterns. These will be removed:\n\`${invalidFactoids.join('`, `')}\``
+                        }
+                    },
+                    {
+                        type: "actions",
+                        block_id: "cleanup_actions",
+                        elements: [
+                            {
+                                type: "button",
+                                text: {
+                                    type: "plain_text",
+                                    text: "Confirm Cleanup",
+                                    emoji: true
+                                },
+                                value: "confirm",
+                                style: "danger",
+                                action_id: `factoid_cleanup_confirm_${Date.now()}`
+                            },
+                            {
+                                type: "button",
+                                text: {
+                                    type: "plain_text",
+                                    text: "Cancel",
+                                    emoji: true
+                                },
+                                value: "cancel",
+                                action_id: `factoid_cleanup_cancel_${Date.now()}`
+                            }
+                        ]
+                    }
+                ],
+                text: `I found ${invalidFactoids.length} factoids that don't match valid patterns. Click 'Confirm Cleanup' to proceed or 'Cancel'.`,
                 thread_ts: msg.thread_ts || msg.ts
             });
             
@@ -708,21 +744,32 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         }
     });
     
-    // Handle cleanup confirmation
-    app.message(/^!factoid:\s*confirm-cleanup$/i, async ({ message, say, context }) => {
-        const msg = message as GenericMessageEvent;
-        const user = msg.user;
+    // Handle cleanup button actions
+    app.action(/factoid_cleanup_(confirm|cancel)_\d+/, async ({ action, ack, body, respond, client, context }) => {
+        await ack();
         
-        if (!pendingCleanupRequests.has(user)) {
-            await say({
-                text: "No pending cleanup request found. Start with `!factoid: cleanup` first.",
-                thread_ts: msg.thread_ts || msg.ts
+        const choice = (action as ButtonAction).value;
+        const userId = body.user.id;
+        
+        if (!pendingCleanupRequests.has(userId)) {
+            await respond({
+                text: "No pending cleanup request found or it has expired.",
+                replace_original: false
             });
             return;
         }
         
-        const request = pendingCleanupRequests.get(user)!;
+        const request = pendingCleanupRequests.get(userId)!;
         const team = context.teamId || 'default';
+        
+        if (choice === 'cancel') {
+            pendingCleanupRequests.delete(userId);
+            await respond({
+                text: "Cleanup cancelled.",
+                replace_original: true
+            });
+            return;
+        }
         
         try {
             // Load factoids
@@ -757,38 +804,19 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 ? `\nRemoved factoids: \`${removedFactoids.join('`, `')}\``
                 : '';
             
-            await say({
-                text: `Created backup \`${path.basename(backupFile)}\` and successfully removed ${removedCount} invalid factoids.${removedList}`,
-                thread_ts: msg.thread_ts || msg.ts
+            await respond({
+                text: `✅ Created backup \`${path.basename(backupFile)}\` and successfully removed ${removedCount} invalid factoids.${removedList}`,
+                replace_original: true
             });
             
             // Clear the pending request
-            pendingCleanupRequests.delete(user);
+            pendingCleanupRequests.delete(userId);
             
         } catch (error) {
             console.error('Error confirming cleanup:', error);
-            await say({
-                text: "Sorry, there was an error while confirming cleanup.",
-                thread_ts: msg.thread_ts || msg.ts
-            });
-        }
-    });
-    
-    // Handle cleanup cancellation
-    app.message(/^!factoid:\s*cancel-cleanup$/i, async ({ message, say }) => {
-        const msg = message as GenericMessageEvent;
-        const user = msg.user;
-        
-        if (pendingCleanupRequests.has(user)) {
-            pendingCleanupRequests.delete(user);
-            await say({
-                text: "Cleanup cancelled.",
-                thread_ts: msg.thread_ts || msg.ts
-            });
-        } else {
-            await say({
-                text: "No pending cleanup request found.",
-                thread_ts: msg.thread_ts || msg.ts
+            await respond({
+                text: "❌ Sorry, there was an error while confirming cleanup.",
+                replace_original: false
             });
         }
     });
@@ -910,8 +938,45 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 timestamp: Date.now()
             });
             
+            // Use buttons for confirmation
             await say({
-                text: `⚠️ WARNING: You are about to restore factoids from backup \`${backupFile}\`.\n\nThis will replace ALL current factoids with the ones from the backup. A backup of your current factoids has been created automatically.\n\nReply with \`!factoid: confirm-restore\` to proceed or \`!factoid: cancel-restore\` to cancel.`,
+                blocks: [
+                    {
+                        type: "section",
+                        text: {
+                            type: "mrkdwn",
+                            text: `⚠️ WARNING: You are about to restore factoids from backup \`${backupFile}\`.\n\nThis will replace ALL current factoids with the ones from the backup. A backup of your current factoids has been created automatically.`
+                        }
+                    },
+                    {
+                        type: "actions",
+                        block_id: "restore_actions",
+                        elements: [
+                            {
+                                type: "button",
+                                text: {
+                                    type: "plain_text",
+                                    text: "Confirm Restore",
+                                    emoji: true
+                                },
+                                value: "confirm",
+                                style: "danger",
+                                action_id: `factoid_restore_confirm_${Date.now()}`
+                            },
+                            {
+                                type: "button",
+                                text: {
+                                    type: "plain_text",
+                                    text: "Cancel",
+                                    emoji: true
+                                },
+                                value: "cancel",
+                                action_id: `factoid_restore_cancel_${Date.now()}`
+                            }
+                        ]
+                    }
+                ],
+                text: `⚠️ WARNING: You are about to restore factoids from backup \`${backupFile}\`. Click 'Confirm Restore' to proceed or 'Cancel'.`,
                 thread_ts: msg.thread_ts || msg.ts
             });
         } catch (error) {
@@ -923,21 +988,32 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         }
     });
     
-    // Handle restore confirmation
-    app.message(/^!factoid:\s*confirm-restore$/i, async ({ message, say, context }) => {
-        const msg = message as GenericMessageEvent;
-        const user = msg.user;
+    // Handle restore button actions
+    app.action(/factoid_restore_(confirm|cancel)_\d+/, async ({ action, ack, body, respond, context }) => {
+        await ack();
         
-        if (!pendingRestoreRequests.has(user)) {
-            await say({
-                text: "No pending restore request found. Start with `!factoid: restore FILENAME` first.",
-                thread_ts: msg.thread_ts || msg.ts
+        const choice = (action as ButtonAction).value;
+        const userId = body.user.id;
+        
+        if (!pendingRestoreRequests.has(userId)) {
+            await respond({
+                text: "No pending restore request found or it has expired.",
+                replace_original: false
             });
             return;
         }
         
-        const request = pendingRestoreRequests.get(user)!;
+        const request = pendingRestoreRequests.get(userId)!;
         const team = context.teamId || 'default';
+        
+        if (choice === 'cancel') {
+            pendingRestoreRequests.delete(userId);
+            await respond({
+                text: "Restore cancelled.",
+                replace_original: true
+            });
+            return;
+        }
         
         try {
             // Read backup file
@@ -946,50 +1022,31 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             
             // Validate the backup data
             if (!backupFactoids.id || !backupFactoids.data) {
-                await say({
+                await respond({
                     text: "❌ Invalid backup file format. Restore cancelled.",
-                    thread_ts: msg.thread_ts || msg.ts
+                    replace_original: true
                 });
-                pendingRestoreRequests.delete(user);
+                pendingRestoreRequests.delete(userId);
                 return;
             }
             
             // Save the restored factoids
             await saveFacts(team, backupFactoids);
             
-            await say({
+            await respond({
                 text: `✅ Successfully restored factoids from backup \`${path.basename(request.backupFile)}\`.\n\nRestored ${Object.keys(backupFactoids.data).length} factoids.`,
-                thread_ts: msg.thread_ts || msg.ts
+                replace_original: true
             });
             
             // Clear the pending request
-            pendingRestoreRequests.delete(user);
+            pendingRestoreRequests.delete(userId);
         } catch (error) {
             console.error('Error restoring from backup:', error);
-            await say({
+            await respond({
                 text: `❌ Error restoring from backup: ${error}`,
-                thread_ts: msg.thread_ts || msg.ts
+                replace_original: false
             });
-            pendingRestoreRequests.delete(user);
-        }
-    });
-    
-    // Handle restore cancellation
-    app.message(/^!factoid:\s*cancel-restore$/i, async ({ message, say }) => {
-        const msg = message as GenericMessageEvent;
-        const user = msg.user;
-        
-        if (pendingRestoreRequests.has(user)) {
-            pendingRestoreRequests.delete(user);
-            await say({
-                text: "Restore cancelled.",
-                thread_ts: msg.thread_ts || msg.ts
-            });
-        } else {
-            await say({
-                text: "No pending restore request found.",
-                thread_ts: msg.thread_ts || msg.ts
-            });
+            pendingRestoreRequests.delete(userId);
         }
     });
 };
