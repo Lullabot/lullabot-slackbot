@@ -727,12 +727,23 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         try {
             // Load factoids
             const factoids = await loadFacts(team);
+            
+            // Create a backup before cleanup
+            const backupDir = path.join(storageDir, 'backups');
+            await fs.promises.mkdir(backupDir, { recursive: true });
+            const timestamp = new Date().toISOString().replace(/:/g, '-');
+            const backupFile = path.join(backupDir, `${team}_factoids_pre_cleanup_${timestamp}.json`);
+            await fs.promises.writeFile(backupFile, JSON.stringify(factoids, null, 2));
+            
             const keysToRemove = request.keys;
             let removedCount = 0;
+            const removedFactoids: string[] = [];
             
             // Remove invalid factoids
             for (const key of keysToRemove) {
                 if (factoids.data[key]) {
+                    // Store the display key of the factoid being removed
+                    removedFactoids.push(factoids.data[key].key);
                     delete factoids.data[key];
                     removedCount++;
                 }
@@ -741,8 +752,13 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             // Save updated factoids
             await saveFacts(team, factoids);
             
+            // Format the list of removed factoids
+            const removedList = removedFactoids.length > 0 
+                ? `\nRemoved factoids: \`${removedFactoids.join('`, `')}\``
+                : '';
+            
             await say({
-                text: `Successfully removed ${removedCount} invalid factoids.`,
+                text: `Created backup \`${path.basename(backupFile)}\` and successfully removed ${removedCount} invalid factoids.${removedList}`,
                 thread_ts: msg.thread_ts || msg.ts
             });
             
