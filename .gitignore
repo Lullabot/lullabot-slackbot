@@ -3,6 +3,5 @@ node_modules/
 data/
 dist/
 .working
-.cursor
 .vscode
 coverage/
