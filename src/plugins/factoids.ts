@@ -167,37 +167,16 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     });
 
     // Query a factoid - triggered by a pattern followed by ? or !
-    app.message(/^.+[!?]$/, async ({ message, context, client, say }) => {
+    app.message(/^((?:<@[UW][A-Z0-9]+>)|(?:@[a-zA-Z0-9._-]+)|(?:[a-zA-Z0-9._-]+(?:\s+[a-zA-Z0-9._-]+)*))[!?]$/i, async ({ message, context, client, say }) => {
         const msg = message as GenericMessageEvent;
         const text = msg.text || '';
-        
-        // Filter out patterns that should not trigger factoids:
-        // 0. Check if there's any text before a potential factoid (exclude these)
-        const hasLeadingText = /^.+\s+(?:<@[UW][A-Z0-9]+>|@[\w\s]+|[^@])[!?]$/i;
-        if (hasLeadingText.test(text)) {
-            return; // Skip if there's text before the factoid
-        }
-        
-        // 1. First check if it's a user mention with additional text (exclude these)
-        // - This handles both @userID and Hey @username patterns
-        const userMentionWithTextPattern = /^(?:Hey\s+)?(?:<@[UW][A-Z0-9]+>|@[\w\s]+)(?:\s+.+|\s*,.+|\s*:.+)[!?]$/i;
-        if (userMentionWithTextPattern.test(text)) {
-            return; // Skip user mentions with extra text
-        }
-        
-        // 2. Check if it's a regular factoid with a space before the punctuation (exclude these)
-        const spaceBeforePunctuationPattern = /\s[!?]$/;
-        if (spaceBeforePunctuationPattern.test(text)) {
-            return; // Skip if there's a space before ? or !
-        }
-        
-        // 3. Check for factoids with too many words (exclude these)
-        // This prevents processing of long sentences as factoids
+
+        // Keep the word count check active as a safeguard
         const wordCount = text.slice(0, -1).trim().split(/\s+/).length;
         if (wordCount > 5) { // Adjust this threshold based on expected factoid length
             return; // Skip if too many words
         }
-        
+
         // 4. Extract the factoid name (everything except the trailing ? or !)
         const rawQuery = text.slice(0, -1).trim();
         

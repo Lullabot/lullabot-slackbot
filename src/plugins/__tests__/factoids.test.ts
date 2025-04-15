@@ -47,7 +47,8 @@ const shouldNotMatchPatterns = [
     '@David Burns: should I work on https://github.com/Lullabot/composer-checks/issues as part of Drainpipe?',
     'what is the question @sethlbrown?',
     'factoid with spaces and then some extra words?',
-    'factoid with spaces and then some extra words!'
+    'factoid with spaces and then some extra words!',
+    'hugs @username for your children!'
 ];
 
 describe('Factoids Plugin', () => {
@@ -94,47 +95,23 @@ describe('Factoids Plugin', () => {
     describe('Pattern Matching', () => {
         // Helper function to process a message and determine if it triggers a factoid
         const shouldTriggerFactoid = (text: string): boolean => {
-            // These conditions are copied from the factoids.ts file but enhanced
-            // to handle all the test cases
-            
-            // 0. Check if there's any text before a potential factoid (exclude these)
-            const hasLeadingText = /^.+\s+(?:<@[UW][A-Z0-9]+>|@[\w\s]+|[^@])[!?]$/i;
-            if (hasLeadingText.test(text)) {
-                console.log(`Pattern "${text}" has leading text - REJECT`);
+            // Use the new, stricter regex directly for testing purposes
+            // Refined regex to better define allowed characters in factoid keys
+            const strictFactoidPattern = /^((?:<@[UW][A-Z0-9]+>)|(?:@[a-zA-Z0-9._-]+)|(?:[a-zA-Z0-9._-]+(?:\s+[a-zA-Z0-9._-]+)*))[!?]$/i;
+
+            if (!strictFactoidPattern.test(text)) {
+                console.log(`Pattern "${text}" does not match strict pattern - REJECT`);
                 return false;
             }
             
-            // 1. First check if it's a user mention with additional text (exclude these)
-            const userMentionWithTextPattern = /^(?:Hey\s+)?(?:<@[UW][A-Z0-9]+>|@[\w\s]+)(?:\s+.+|\s*,.+|\s*:.+)[!?]$/i;
-            if (userMentionWithTextPattern.test(text)) {
-                console.log(`Pattern "${text}" matches userMentionWithTextPattern - REJECT`);
-                return false; // Skip user mentions with extra text
-            }
-            
-            // 2. Check if it has a space before the punctuation (exclude these)
-            const spaceBeforePunctuationPattern = /\s[!?]$/;
-            if (spaceBeforePunctuationPattern.test(text)) {
-                console.log(`Pattern "${text}" matches spaceBeforePunctuationPattern - REJECT`);
-                return false; // Skip if there's a space before ? or !
-            }
-            
-            // 3. Check for factoids with too many words (exclude these)
-            // This is a heuristic - if there are more than 5 words, it's likely not a simple factoid
-            // We could also use a specific pattern to check for "and then some extra words" but this is more general
+            // Optional: Keep the word count check as an additional constraint if desired
             const wordCount = text.slice(0, -1).trim().split(/\s+/).length;
-            if (wordCount > 5) { // Adjust this threshold based on your expected factoid length
+            if (wordCount > 5) { // Adjust this threshold based on expected factoid length
                 console.log(`Pattern "${text}" has too many words (${wordCount}) - REJECT`);
                 return false;
             }
             
-            // 4. Ensure it ends with ? or !
-            const endsWithPunctuation = /^.+[!?]$/;
-            if (!endsWithPunctuation.test(text)) {
-                console.log(`Pattern "${text}" does not match endsWithPunctuation - REJECT`);
-                return false;
-            }
-            
-            console.log(`Pattern "${text}" passes all checks - ACCEPT`);
+            console.log(`Pattern "${text}" matches strict pattern - ACCEPT`);
             return true;
         };
         
