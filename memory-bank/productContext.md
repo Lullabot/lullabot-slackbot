@@ -7,9 +7,19 @@ Provides automated utilities, information retrieval (factoids), and community en
 - Users interact with the bot via direct messages, mentions (`@bot`), or specific message patterns (e.g., `keyword?`, `item++`).
 - The bot listens for these triggers and responds accordingly, often in threads to keep channels clean.
 - New functionalities are added as self-contained plugins.
+- Factoids can be created, retrieved, and managed with link preview control.
 
 ## User Experience Goals
 - **Responsive:** The bot should react quickly to commands.
 - **Helpful:** Provide clear information and perform utility tasks effectively.
 - **Organized:** Use threads for detailed responses to avoid cluttering main channels.
-- **Extensible:** Easily add new commands and features through the plugin system. 
+- **Customizable:** Control display options like link previews in factoids.
+- **Extensible:** Easily add new commands and features through the plugin system.
+
+## Recent Enhancements
+- **Link Preview Control:** Users can now control whether links in factoids display previews.
+  - `@bot X is Y | preview` enables previews (default)
+  - `@bot X is Y | nopreview` disables previews
+  - The factoid list shows which factoids contain links with previews enabled (👁️)
+- **Improved Message Handling:** Enhanced pattern matching for more reliable command recognition.
+- **Better Threading:** Improved response threading for better conversation context. 

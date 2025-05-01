@@ -1,15 +1,22 @@
 # Active Context: Lullabot Slack Bot
 
 ## Current Focus
-Initial project analysis and Memory Bank population. Understanding the existing structure, plugins, and core mechanisms.
+Link preview management for factoids and general bot improvements.
 
 ## Recent Changes
-- N/A (Initial analysis)
+- Added link preview control for factoids (PR #77, fixes #76)
+- Enhanced factoid filtering logic and regex patterns for improved accuracy
+- Improved thread handling in karma plugin
+- Added memory bank for better documentation
+- Updated dependencies (Node.js, TypeScript, etc.)
+- Fixed various factoid matching patterns to address edge cases
 
 ## Next Steps
-- Review this proposed Memory Bank content with the user.
-- Based on feedback, proceed with specific development tasks or further analysis as directed.
+- Merge pending dependency updates (several PRs open)
+- Potential improvements to other plugins based on recent factoid enhancements
+- Continue improving plugin architecture with pattern registry
 
 ## Active Decisions/Considerations
-- Confirm the exact location and creation mechanism of the `data/` directory for JSON storage. The README mentions it, but its creation isn't explicit in `bot.ts`. It's likely handled within plugins needing persistence.
-- Understand the implementation details of the file-based storage (`src/services/storage.ts` might exist, or it's inline in plugins). 
+- Factoid link previews are enabled by default, with a clean interface to disable them
+- Factoid listing now shows eye emoji (👁️) only for factoids with links that have previews enabled
+- User experience improvements focus on more reliable message handling 
