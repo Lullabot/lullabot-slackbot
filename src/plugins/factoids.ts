@@ -12,6 +12,7 @@ interface Fact {
     be: string;
     reply: boolean;
     value: string[];
+    previewLinks?: boolean; // Optional field - undefined/true for showing previews, false to suppress
 }
 
 interface FactoidStorage extends Storage {
@@ -151,10 +152,25 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 return;
             }
 
-            const sortedKeys = keys.sort().map(key => factoids.data[key].key);
+            // Modified to include preview indicators
+            const sortedKeys = keys.sort().map(key => {
+                const fact = factoids.data[key];
+                
+                // Only show eye emoji if:
+                // 1. Preview is enabled (previewLinks !== false)
+                // 2. The factoid actually contains URLs that could be unfurled
+                const containsUrls = fact.value.some(v => {
+                    // Simple URL detection regex
+                    return /https?:\/\/[^\s]+/.test(v);
+                });
+                
+                // Add eye emoji only for factoids that will display previews AND contain URLs
+                const previewIndicator = (fact.previewLinks !== false && containsUrls) ? " 👁️" : "";
+                return fact.key + previewIndicator;
+            });
 
             await say({
-                text: `Available factoids: ${sortedKeys.join(', ')}`,
+                text: `Available factoids: \n• 👁️ _indicates links with previews enabled_ \n${sortedKeys.join(', ')}`,
                 thread_ts: msg.thread_ts || msg.ts // Always reply in a thread
             });
         } catch (error) {
@@ -221,6 +237,8 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         if (fact) {
             await say({
                 text: factString(fact),
+                unfurl_links: fact.previewLinks !== false, // True if undefined or true
+                unfurl_media: fact.previewLinks !== false, // True if undefined or true
                 ...(msg.thread_ts && { thread_ts: msg.thread_ts })
             });
         }
@@ -346,6 +364,8 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             if (fact) {
                 await say({
                     text: factString(fact),
+                    unfurl_links: fact.previewLinks !== false, // True if undefined or true
+                    unfurl_media: fact.previewLinks !== false, // True if undefined or true
                     thread_ts: mention.thread_ts || mention.ts
                 });
                 return;
@@ -526,12 +546,29 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             if (hasReply) {
                 value = value.replace(/^<reply>\s*/, '').trim();
             }
+            
+            // Check for pipe separator followed by preview settings
+            let previewLinks = true; // Default to showing previews
+            const pipeIndex = value.lastIndexOf('|');
+            
+            if (pipeIndex !== -1) {
+                const previewSetting = value.substring(pipeIndex + 1).trim().toLowerCase();
+                if (previewSetting === 'nopreview') {
+                    previewLinks = false;
+                } else if (previewSetting === 'preview') {
+                    previewLinks = true;
+                }
+                
+                // Remove the pipe and preview setting from the value
+                value = value.substring(0, pipeIndex).trim();
+            }
 
             const fact: Fact = {
                 key: displayKey,
                 be: setMatches[2]?.trim() || 'is',
                 reply: hasReply,
-                value: [value]
+                value: [value],
+                previewLinks: previewLinks
             };
 
             const factoids = await loadFacts(team);
@@ -624,10 +661,16 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                                 replace_original: true
                             });
                         } else if (choice === 'append') {
+                            // Preserve existing previewLinks setting when appending
+                            const existingPreviewSetting = factoids.data[storeKey].previewLinks;
                             factoids.data[storeKey].value = factoids.data[storeKey].value.concat(fact.value);
+                            // Use the new previewLinks setting if explicitly set, otherwise keep the existing one
+                            if (fact.hasOwnProperty('previewLinks')) {
+                                factoids.data[storeKey].previewLinks = fact.previewLinks;
+                            }
                             await saveFacts(team, factoids);
                             await respond({
-                                text: `✅ Appended! New factoid is:\n"${factString(fact)}"`,
+                                text: `✅ Appended! New factoid is:\n"${factString(factoids.data[storeKey])}"`,
                                 replace_original: true
                             });
                         } else if (choice === 'cancel') {
