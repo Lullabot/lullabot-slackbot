@@ -10,6 +10,7 @@ Link preview management for factoids and general bot improvements.
 - Added memory bank for better documentation
 - Updated dependencies (Node.js, TypeScript, etc.)
 - Fixed various factoid matching patterns to address edge cases
+- Changed factoid list to display a lock icon (🔒) only for factoids with disabled link previews
 
 ## Next Steps
 - Merge pending dependency updates (several PRs open)
@@ -18,5 +19,5 @@ Link preview management for factoids and general bot improvements.
 
 ## Active Decisions/Considerations
 - Factoid link previews are enabled by default, with a clean interface to disable them
-- Factoid listing now shows eye emoji (👁️) only for factoids with links that have previews enabled
-- User experience improvements focus on more reliable message handling 
+- Factoid listing now shows lock emoji (🔒) only for factoids with links that have previews disabled
+- User experience improvements focus on more reliable message handling and cleaner display 

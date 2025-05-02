@@ -164,13 +164,13 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                     return /https?:\/\/[^\s]+/.test(v);
                 });
                 
-                // Add eye emoji only for factoids that will display previews AND contain URLs
-                const previewIndicator = (fact.previewLinks !== false && containsUrls) ? " 👁️" : "";
+                // Add lock emoji only for factoids that contain URLs with previews DISABLED
+                const previewIndicator = (fact.previewLinks === false && containsUrls) ? " 🔒" : "";
                 return fact.key + previewIndicator;
             });
 
             await say({
-                text: `Available factoids: \n• 👁️ _indicates links with previews enabled_ \n${sortedKeys.join(', ')}`,
+                text: `Available factoids: \n• 🔒 _indicates links with previews disabled_ \n${sortedKeys.join(', ')}`,
                 thread_ts: msg.thread_ts || msg.ts // Always reply in a thread
             });
         } catch (error) {

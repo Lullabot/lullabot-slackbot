@@ -20,6 +20,6 @@ Provides automated utilities, information retrieval (factoids), and community en
 - **Link Preview Control:** Users can now control whether links in factoids display previews.
   - `@bot X is Y | preview` enables previews (default)
   - `@bot X is Y | nopreview` disables previews
-  - The factoid list shows which factoids contain links with previews enabled (👁️)
+  - The factoid list shows a lock icon (🔒) for factoids with links that have previews disabled
 - **Improved Message Handling:** Enhanced pattern matching for more reliable command recognition.
 - **Better Threading:** Improved response threading for better conversation context. 

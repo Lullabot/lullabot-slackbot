@@ -41,6 +41,7 @@ graph TD
 
 ## Recent Enhancements
 - Added link preview control mechanism for factoids
+  - Uses lock icon (🔒) to indicate factoids with disabled link previews
 - Improved pattern matching for more reliable message handling
 - Enhanced thread handling in message responses
 - Expanded test coverage for critical plugins 

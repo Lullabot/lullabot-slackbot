@@ -17,11 +17,12 @@
 ## Recently Completed
 - Added link preview control for factoids (May 2025)
   - New syntax: `@bot X is Y | preview` or `@bot X is Y | nopreview`
-  - Visual indicators in factoid listing (eye emoji)
+  - Visual indicators in factoid listing (lock emoji for disabled previews)
 - Improved factoid pattern matching and filtering (April 2025)
 - Fixed issues with user mentions in factoid triggers
 - Added comprehensive test cases for factoids plugin
 - Enhanced message threading support in plugins
+- Improved factoid list display to reduce visual clutter
 
 ## Current Status
 - Active development with regular improvements

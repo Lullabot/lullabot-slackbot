@@ -23,7 +23,7 @@ const helpText: HelpText = {
             { pattern: '@bot X is Y | preview', description: 'Set with link previews enabled (default)' },
             { pattern: '@bot X is Y | nopreview', description: 'Set with link previews disabled' },
             { pattern: '@bot forget X', description: 'Delete a factoid' },
-            { pattern: '!factoid: list', description: 'List all factoids (👁️ indicates links with previews enabled)' }
+            { pattern: '!factoid: list', description: 'List all factoids (🔒 indicates links with previews disabled)' }
         ]
     },
     karma: {
