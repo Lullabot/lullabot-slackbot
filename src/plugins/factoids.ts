@@ -136,48 +136,54 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     patternRegistry.registerPattern(/^.+[!?]$/, 'factoids:app_mention', 0.25);
 
     // Add new list command
-    app.message(/^!factoid:\s*list$/i, async ({ message, say, context }) => {
+    app.message(/^!factoid:\s*list$/i, async ({ message, say, context, client }) => {
         const msg = message as GenericMessageEvent;
         const team = context.teamId || 'default';
-        
         try {
             const factoids = await loadFacts(team);
             const keys = Object.keys(factoids.data);
-            
             if (keys.length === 0) {
                 await say({
-                    text: "No factoids stored yet.",
-                    thread_ts: msg.thread_ts || msg.ts // Always reply in a thread
+                    text: 'No factoids stored yet.',
+                    thread_ts: msg.thread_ts || msg.ts
                 });
                 return;
             }
-
-            // Modified to include preview indicators
+            // Sort and add preview indicators
             const sortedKeys = keys.sort().map(key => {
                 const fact = factoids.data[key];
-                
-                // Only show eye emoji if:
-                // 1. Preview is enabled (previewLinks !== false)
-                // 2. The factoid actually contains URLs that could be unfurled
-                const containsUrls = fact.value.some(v => {
-                    // Simple URL detection regex
-                    return /https?:\/\/[^\s]+/.test(v);
-                });
-                
-                // Add lock emoji only for factoids that contain URLs with previews DISABLED
-                const previewIndicator = (fact.previewLinks === false && containsUrls) ? " 🔒" : "";
+                const containsUrls = fact.value.some(v => /https?:\/\/[\S]+/.test(v));
+                const previewIndicator = (fact.previewLinks === false && containsUrls) ? ' 🔒' : '';
                 return fact.key + previewIndicator;
             });
-
-            await say({
-                text: `Available factoids: \n• 🔒 _indicates links with previews disabled_ \n${sortedKeys.join(', ')}`,
-                thread_ts: msg.thread_ts || msg.ts // Always reply in a thread
-            });
+            // Detect DM context
+            const isDM = msg.channel_type === 'im';
+            if (isDM) {
+                await say({
+                    text: `Available factoids: \n• 🔒 _indicates links with previews disabled_ \n${sortedKeys.join(', ')}`,
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+            } else {
+                // Truncate to first 10 for preview
+                const truncated = sortedKeys.slice(0, 10);
+                let text = `Available factoids (showing first 10):\n• 🔒 _indicates links with previews disabled_ \n${truncated.join(', ')}`;
+                if (sortedKeys.length > 10) {
+                    text += `\n_List truncated. Use !factoid: list in a DM with me to see the full list._`;
+                } else {
+                    text += `\n_Use !factoid: list in a DM with me to see the full list._`;
+                }
+                // Send ephemeral message
+                await client.chat.postEphemeral({
+                    channel: msg.channel,
+                    user: msg.user,
+                    text,
+                });
+            }
         } catch (error) {
             console.error('Error listing factoids:', error);
             await say({
-                text: "Sorry, there was an error listing the factoids.",
-                thread_ts: msg.thread_ts || msg.ts // Always reply in a thread
+                text: 'Sorry, there was an error listing the factoids.',
+                thread_ts: msg.thread_ts || msg.ts
             });
         }
     });
