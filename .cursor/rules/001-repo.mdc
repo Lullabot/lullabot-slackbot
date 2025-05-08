@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Look at the .git configuration to interact with the proper repository when using github MCP tools.

@@ -1,7 +1,7 @@
 {
     "display_information": {
         "name": "Lullabot",
-        "description": "test bot for history export",
+        "description": "This is a little bot to help Lullabots at Lullabot.",
         "background_color": "#000000"
     },
     "features": {
@@ -15,7 +15,7 @@
             "always_online": true
         },
         "assistant_view": {
-            "assistant_description": "This is a test of the agent/assistant",
+            "assistant_description": "This is a little bot to help with knowledge sharing and fun at Lullabot.",
             "suggested_prompts": []
         }
     },

@@ -244,6 +244,76 @@ The bot uses a modular plugin system. Each feature is implemented as a separate 
 3. Use Bolt's event system to handle messages and interactions
 4. Follow existing patterns for data storage and error handling
 
+## Testing
+
+### Factoid Pattern Testing
+
+The factoid plugin includes a test suite that verifies the pattern matching functionality works correctly. This ensures the bot correctly identifies which messages should trigger factoid lookups and which should be ignored.
+
+#### Running the Tests
+
+To run the factoid tests:
+
+```bash
+npm test
+```
+
+This will run all test suites, including the factoid pattern tests.
+
+To run just the factoid tests:
+
+```bash
+npm test -- -t "Factoids Plugin"
+```
+
+#### Adding New Test Patterns
+
+The test patterns are defined in two arrays in `src/plugins/__tests__/factoids.test.ts`:
+
+1. `shouldMatchPatterns` - Patterns that SHOULD trigger a factoid lookup
+2. `shouldNotMatchPatterns` - Patterns that should NOT trigger a factoid lookup
+
+To add new test patterns:
+
+1. Open `src/plugins/__tests__/factoids.test.ts`
+2. Add your new pattern to the appropriate array:
+
+```typescript
+// Use these patterns to test if the factoid plugin would trigger
+const shouldMatchPatterns = [
+    'factoid?',
+    'factoid!',
+    // Add your new MATCHING pattern here
+    'your-new-pattern?'
+];
+
+// These patterns should NOT trigger the factoid plugin
+const shouldNotMatchPatterns = [
+    'factoid ?',
+    'factoid !',
+    // Add your new NON-MATCHING pattern here
+    'your new pattern that should not match?'
+];
+```
+
+3. Update the corresponding documentation in `src/tests/factoids-pattern-tests.md` to keep it in sync with the actual tests.
+
+The current pattern matching rules are:
+
+1. Messages ending with `?` or `!` with no space before the punctuation will trigger factoid lookup
+2. User mentions followed by additional text are ignored
+3. Messages with more than 5 words are considered too complex and ignored
+4. Messages with a space before the final punctuation are ignored
+
+#### Modifying Pattern Logic
+
+The pattern matching logic is implemented in two places:
+
+1. `src/plugins/__tests__/factoids.test.ts` in the `shouldTriggerFactoid` function (for testing)
+2. `src/plugins/factoids.ts` in the message handler
+
+If you need to change how patterns are matched, make sure to update both locations to keep them in sync.
+
 ## Maintenance
 
 - Logs are output to console
