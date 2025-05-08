@@ -123,12 +123,34 @@ function isReservedCommand(text: string): boolean {
     return isReserved;
 }
 
+// Add a new Map to track pending cleanup requests
+const pendingCleanupRequests = new Map<string, {
+    keys: string[];
+    team: string;
+    channel: string;
+    thread_ts?: string;
+    timestamp: number;
+}>();
+
+// Add a new Map to track pending restore requests
+const pendingRestoreRequests = new Map<string, {
+    backupFile: string;
+    team: string;
+    channel: string;
+    thread_ts?: string;
+    timestamp: number;
+}>();
+
 const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     // Register factoid patterns with the registry
     patternRegistry.registerPattern(/^!factoid:\s*list$/i, 'factoids', 1);
     patternRegistry.registerPattern(/^forget\s+(.+)$/i, 'factoids', 1);
     patternRegistry.registerPattern(/^(YES|NO)$/i, 'factoids', 0.5); // Lower priority for YES/NO
-    
+    patternRegistry.registerPattern(/^([^?!]+)[!?]$/, 'factoids', 1); // Updated to allow spaces in factoid names
+    patternRegistry.registerPattern(/^!factoid:\s*cleanup$/i, 'factoids', 1); // Add new cleanup command
+    patternRegistry.registerPattern(/^!factoid:\s*backup$/i, 'factoids', 1); // Add new backup command
+    patternRegistry.registerPattern(/^!factoid:\s*restore\s+(.+)$/i, 'factoids', 1); // Add new restore command
+    patternRegistry.registerPattern(/^!factoid:\s*backups$/i, 'factoids', 1); // Add command to list backups
     // Two separate patterns for factoids - both lower priority than other commands
     patternRegistry.registerPattern(/^.+[!?]$/, 'factoids', 0.25); // Any text ending with ? or !
     
@@ -694,6 +716,418 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                     }
                 });
             }
+        }
+    });
+
+    // Add bulk cleanup command for factoids that don't match regex patterns
+    app.message(/^!factoid:\s*cleanup$/i, async ({ message, say, context }) => {
+        const msg = message as GenericMessageEvent;
+        const team = context.teamId || 'default';
+        
+        try {
+            const factoids = await loadFacts(team);
+            const keys = Object.keys(factoids.data);
+            
+            if (keys.length === 0) {
+                await say({
+                    text: "No factoids stored yet.",
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+                return;
+            }
+
+            // Find factoids that don't match valid patterns
+            const invalidFactoids: string[] = [];
+            
+            for (const key in factoids.data) {
+                const factoid = factoids.data[key];
+                const factoidKey = factoid.key;
+                
+                // Skip user mentions which are stored differently
+                if (factoidKey.startsWith('<@') || /^[UW][A-Z0-9]+$/.test(key)) {
+                    continue;
+                }
+                
+                // Check if the factoid doesn't conform to our patterns
+                // Our main pattern allows alphanumeric and some special chars
+                if (factoidKey.includes(',') || factoidKey.includes('"') || 
+                    /^[!@#$%^&*()]/.test(factoidKey) || 
+                    factoidKey.length > 100) {
+                    invalidFactoids.push(key);
+                }
+            }
+            
+            if (invalidFactoids.length === 0) {
+                await say({
+                    text: "No invalid factoids found that need cleanup.",
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+                return;
+            }
+            
+            // Ask for confirmation before removing
+            await say({
+                blocks: [
+                    {
+                        type: "section",
+                        text: {
+                            type: "mrkdwn",
+                            text: `I found ${invalidFactoids.length} factoids that don't match valid patterns. These will be removed:\n\`${invalidFactoids.join('`, `')}\``
+                        }
+                    },
+                    {
+                        type: "actions",
+                        block_id: "cleanup_actions",
+                        elements: [
+                            {
+                                type: "button",
+                                text: {
+                                    type: "plain_text",
+                                    text: "Confirm Cleanup",
+                                    emoji: true
+                                },
+                                value: "confirm",
+                                style: "danger",
+                                action_id: `factoid_cleanup_confirm_${Date.now()}`
+                            },
+                            {
+                                type: "button",
+                                text: {
+                                    type: "plain_text",
+                                    text: "Cancel",
+                                    emoji: true
+                                },
+                                value: "cancel",
+                                action_id: `factoid_cleanup_cancel_${Date.now()}`
+                            }
+                        ]
+                    }
+                ],
+                text: `I found ${invalidFactoids.length} factoids that don't match valid patterns. Click 'Confirm Cleanup' to proceed or 'Cancel'.`,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+            
+            // Store cleanup request in memory for confirmation
+            pendingCleanupRequests.set(msg.user, {
+                keys: invalidFactoids,
+                team,
+                channel: msg.channel,
+                thread_ts: msg.thread_ts || msg.ts,
+                timestamp: Date.now()
+            });
+            
+        } catch (error) {
+            console.error('Error cleaning up factoids:', error);
+            await say({
+                text: "Sorry, there was an error while cleaning up factoids.",
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        }
+    });
+    
+    // Handle cleanup button actions
+    app.action(/factoid_cleanup_(confirm|cancel)_\d+/, async ({ action, ack, body, respond, client, context }) => {
+        await ack();
+        
+        const choice = (action as ButtonAction).value;
+        const userId = body.user.id;
+        
+        if (!pendingCleanupRequests.has(userId)) {
+            await respond({
+                text: "No pending cleanup request found or it has expired.",
+                replace_original: false
+            });
+            return;
+        }
+        
+        const request = pendingCleanupRequests.get(userId)!;
+        const team = context.teamId || 'default';
+        
+        if (choice === 'cancel') {
+            pendingCleanupRequests.delete(userId);
+            await respond({
+                text: "Cleanup cancelled.",
+                replace_original: true
+            });
+            return;
+        }
+        
+        try {
+            // Load factoids
+            const factoids = await loadFacts(team);
+            
+            // Create a backup before cleanup
+            const backupDir = path.join(storageDir, 'backups');
+            await fs.promises.mkdir(backupDir, { recursive: true });
+            const timestamp = new Date().toISOString().replace(/:/g, '-');
+            const backupFile = path.join(backupDir, `${team}_factoids_pre_cleanup_${timestamp}.json`);
+            await fs.promises.writeFile(backupFile, JSON.stringify(factoids, null, 2));
+            
+            const keysToRemove = request.keys;
+            let removedCount = 0;
+            const removedFactoids: string[] = [];
+            
+            // Remove invalid factoids
+            for (const key of keysToRemove) {
+                if (factoids.data[key]) {
+                    // Store the display key of the factoid being removed
+                    removedFactoids.push(factoids.data[key].key);
+                    delete factoids.data[key];
+                    removedCount++;
+                }
+            }
+            
+            // Save updated factoids
+            await saveFacts(team, factoids);
+            
+            // Format the list of removed factoids
+            const removedList = removedFactoids.length > 0 
+                ? `\nRemoved factoids: \`${removedFactoids.join('`, `')}\``
+                : '';
+            
+            await respond({
+                text: `✅ Created backup \`${path.basename(backupFile)}\` and successfully removed ${removedCount} invalid factoids.${removedList}`,
+                replace_original: true
+            });
+            
+            // Clear the pending request
+            pendingCleanupRequests.delete(userId);
+            
+        } catch (error) {
+            console.error('Error confirming cleanup:', error);
+            await respond({
+                text: "❌ Sorry, there was an error while confirming cleanup.",
+                replace_original: false
+            });
+        }
+    });
+
+    // Add backup command
+    app.message(/^!factoid:\s*backup$/i, async ({ message, say, context }) => {
+        const msg = message as GenericMessageEvent;
+        const team = context.teamId || 'default';
+        
+        try {
+            const factoids = await loadFacts(team);
+            const backupDir = path.join(storageDir, 'backups');
+            
+            // Create backup directory if it doesn't exist
+            await fs.promises.mkdir(backupDir, { recursive: true });
+            
+            // Create a backup file with timestamp
+            const timestamp = new Date().toISOString().replace(/:/g, '-');
+            const backupFile = path.join(backupDir, `${team}_factoids_${timestamp}.json`);
+            
+            // Write the backup
+            await fs.promises.writeFile(backupFile, JSON.stringify(factoids, null, 2));
+            
+            await say({
+                text: `✅ Backup created successfully: \`${path.basename(backupFile)}\``,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        } catch (error) {
+            console.error('Error creating factoids backup:', error);
+            await say({
+                text: `❌ Error creating backup: ${error}`,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        }
+    });
+    
+    // Add command to list available backups
+    app.message(/^!factoid:\s*backups$/i, async ({ message, say, context }) => {
+        const msg = message as GenericMessageEvent;
+        const team = context.teamId || 'default';
+        
+        try {
+            const backupDir = path.join(storageDir, 'backups');
+            
+            // Create backup directory if it doesn't exist
+            await fs.promises.mkdir(backupDir, { recursive: true });
+            
+            // List files in the backup directory
+            const files = await fs.promises.readdir(backupDir);
+            
+            // Filter for this team's backups
+            const teamBackups = files.filter(file => file.startsWith(`${team}_factoids_`) && file.endsWith('.json'));
+            
+            if (teamBackups.length === 0) {
+                await say({
+                    text: "No factoid backups found for this team.",
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+                return;
+            }
+            
+            // Sort backups by date (newest first)
+            teamBackups.sort().reverse();
+            
+            await say({
+                text: `Available factoid backups:\n${teamBackups.map(file => `• \`${file}\``).join('\n')}\n\nTo restore from a backup, use: \`!factoid: restore FILENAME\``,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        } catch (error) {
+            console.error('Error listing factoid backups:', error);
+            await say({
+                text: `❌ Error listing backups: ${error}`,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        }
+    });
+    
+    // Add restore command
+    app.message(/^!factoid:\s*restore\s+(.+)$/i, async ({ message, say, context }) => {
+        const msg = message as GenericMessageEvent;
+        const team = context.teamId || 'default';
+        const backupFile = context.matches?.[1]?.trim();
+        
+        if (!backupFile) {
+            await say({
+                text: "Please specify a backup file to restore. Use `!factoid: backups` to see available backups.",
+                thread_ts: msg.thread_ts || msg.ts
+            });
+            return;
+        }
+        
+        try {
+            const backupDir = path.join(storageDir, 'backups');
+            const backupPath = path.join(backupDir, backupFile);
+            
+            // Check if backup file exists
+            try {
+                await fs.promises.access(backupPath, fs.constants.F_OK);
+            } catch (e) {
+                await say({
+                    text: `❌ Backup file \`${backupFile}\` not found. Use \`!factoid: backups\` to see available backups.`,
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+                return;
+            }
+            
+            // Create a backup of current state before restore
+            const currentFactoids = await loadFacts(team);
+            const timestamp = new Date().toISOString().replace(/:/g, '-');
+            const preRestoreBackup = path.join(backupDir, `${team}_factoids_pre_restore_${timestamp}.json`);
+            await fs.promises.writeFile(preRestoreBackup, JSON.stringify(currentFactoids, null, 2));
+            
+            // Store the restore request for confirmation
+            pendingRestoreRequests.set(msg.user, {
+                backupFile: backupPath,
+                team,
+                channel: msg.channel,
+                thread_ts: msg.thread_ts || msg.ts,
+                timestamp: Date.now()
+            });
+            
+            // Use buttons for confirmation
+            await say({
+                blocks: [
+                    {
+                        type: "section",
+                        text: {
+                            type: "mrkdwn",
+                            text: `⚠️ WARNING: You are about to restore factoids from backup \`${backupFile}\`.\n\nThis will replace ALL current factoids with the ones from the backup. A backup of your current factoids has been created automatically.`
+                        }
+                    },
+                    {
+                        type: "actions",
+                        block_id: "restore_actions",
+                        elements: [
+                            {
+                                type: "button",
+                                text: {
+                                    type: "plain_text",
+                                    text: "Confirm Restore",
+                                    emoji: true
+                                },
+                                value: "confirm",
+                                style: "danger",
+                                action_id: `factoid_restore_confirm_${Date.now()}`
+                            },
+                            {
+                                type: "button",
+                                text: {
+                                    type: "plain_text",
+                                    text: "Cancel",
+                                    emoji: true
+                                },
+                                value: "cancel",
+                                action_id: `factoid_restore_cancel_${Date.now()}`
+                            }
+                        ]
+                    }
+                ],
+                text: `⚠️ WARNING: You are about to restore factoids from backup \`${backupFile}\`. Click 'Confirm Restore' to proceed or 'Cancel'.`,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        } catch (error) {
+            console.error('Error preparing restore:', error);
+            await say({
+                text: `❌ Error preparing restore: ${error}`,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        }
+    });
+    
+    // Handle restore button actions
+    app.action(/factoid_restore_(confirm|cancel)_\d+/, async ({ action, ack, body, respond, context }) => {
+        await ack();
+        
+        const choice = (action as ButtonAction).value;
+        const userId = body.user.id;
+        
+        if (!pendingRestoreRequests.has(userId)) {
+            await respond({
+                text: "No pending restore request found or it has expired.",
+                replace_original: false
+            });
+            return;
+        }
+        
+        const request = pendingRestoreRequests.get(userId)!;
+        const team = context.teamId || 'default';
+        
+        if (choice === 'cancel') {
+            pendingRestoreRequests.delete(userId);
+            await respond({
+                text: "Restore cancelled.",
+                replace_original: true
+            });
+            return;
+        }
+        
+        try {
+            // Read backup file
+            const backupData = await fs.promises.readFile(request.backupFile, 'utf8');
+            const backupFactoids = JSON.parse(backupData) as FactoidStorage;
+            
+            // Validate the backup data
+            if (!backupFactoids.id || !backupFactoids.data) {
+                await respond({
+                    text: "❌ Invalid backup file format. Restore cancelled.",
+                    replace_original: true
+                });
+                pendingRestoreRequests.delete(userId);
+                return;
+            }
+            
+            // Save the restored factoids
+            await saveFacts(team, backupFactoids);
+            
+            await respond({
+                text: `✅ Successfully restored factoids from backup \`${path.basename(request.backupFile)}\`.\n\nRestored ${Object.keys(backupFactoids.data).length} factoids.`,
+                replace_original: true
+            });
+            
+            // Clear the pending request
+            pendingRestoreRequests.delete(userId);
+        } catch (error) {
+            console.error('Error restoring from backup:', error);
+            await respond({
+                text: `❌ Error restoring from backup: ${error}`,
+                replace_original: false
+            });
+            pendingRestoreRequests.delete(userId);
         }
     });
 };
