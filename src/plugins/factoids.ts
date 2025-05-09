@@ -1,11 +1,12 @@
 import { App } from '@slack/bolt';
 import { GenericMessageEvent } from '@slack/types/dist/events/message';
 import { AppMentionEvent } from '@slack/types/dist/events/app';
-import { BlockAction, ButtonAction } from '@slack/bolt';
+import { BlockAction, ButtonAction, OverflowAction } from '@slack/bolt';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Plugin, Storage } from '../types';
 import patternRegistry from '../services/pattern-registry';
+import crypto from 'crypto';
 
 interface Fact {
     key: string;
@@ -141,6 +142,35 @@ const pendingRestoreRequests = new Map<string, {
     timestamp: number;
 }>();
 
+// In-memory mapping for hash-to-key per user and page
+const factoidHashMaps: Map<string, Record<string, string>> = new Map();
+// In-memory mapping for list message channel/ts per user
+interface ListMessageRef { channel: string, ts: string }
+const factoidListRefs: Map<string, ListMessageRef> = new Map();
+
+// Utility to unescape HTML entities (ensure <reply> is always literal)
+function unescapeReply(text: string): string {
+    return text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+// Utility to check and normalize reply factoids
+function normalizeReplyFactoid(values: string[]): { values: string[], reply: boolean } {
+    let reply = false;
+    const normalized = values.map(v => {
+        let val = unescapeReply(v.trim());
+        if (val.toLowerCase().startsWith('<reply>')) {
+            reply = true;
+            val = val.replace(/^<reply>\s*/i, '');
+        }
+        return val;
+    });
+    // If any value was a reply, ensure all <reply> tags are stripped
+    return {
+        values: normalized.map(val => val.replace(/^<reply>\s*/i, '').replace(/^&lt;reply&gt;\s*/i, '')),
+        reply
+    };
+}
+
 const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     // Register factoid patterns with the registry
     patternRegistry.registerPattern(/^!factoid:\s*list$/i, 'factoids', 1);
@@ -158,12 +188,12 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     patternRegistry.registerPattern(/^.+[!?]$/, 'factoids:app_mention', 0.25);
 
     // Add new list command
-    app.message(/^!factoid:\s*list$/i, async ({ message, say, context, client }) => {
+    app.message(/^!factoid:\s*list$/i, async ({ message, say, context, client, body }) => {
         const msg = message as GenericMessageEvent;
         const team = context.teamId || 'default';
         try {
             const factoids = await loadFacts(team);
-            const keys = Object.keys(factoids.data);
+            const keys = Object.keys(factoids.data).sort();
             if (keys.length === 0) {
                 await say({
                     text: 'No factoids stored yet.',
@@ -171,35 +201,83 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 });
                 return;
             }
-            // Sort and add preview indicators
-            const sortedKeys = keys.sort().map(key => {
-                const fact = factoids.data[key];
-                const containsUrls = fact.value.some(v => /https?:\/\/[\S]+/.test(v));
-                const previewIndicator = (fact.previewLinks === false && containsUrls) ? ' 🔒' : '';
-                return fact.key + previewIndicator;
-            });
-            // Detect DM context
             const isDM = msg.channel_type === 'im';
-            if (isDM) {
-                await say({
-                    text: `Available factoids: \n• 🔒 _indicates links with previews disabled_ \n${sortedKeys.join(', ')}`,
-                    thread_ts: msg.thread_ts || msg.ts
-                });
-            } else {
-                // Truncate to first 10 for preview
-                const truncated = sortedKeys.slice(0, 10);
-                let text = `Available factoids (showing first 10):\n• 🔒 _indicates links with previews disabled_ \n${truncated.join(', ')}`;
-                if (sortedKeys.length > 10) {
-                    text += `\n_List truncated. Use !factoid: list in a DM with me to see the full list._`;
-                } else {
-                    text += `\n_Use !factoid: list in a DM with me to see the full list._`;
-                }
-                // Send ephemeral message
+            if (!isDM) {
+                // Channel: ephemeral redirect
                 await client.chat.postEphemeral({
                     channel: msg.channel,
                     user: msg.user,
-                    text,
+                    text: 'To manage all factoids, DM me with `!factoid: list` for an interactive interface.',
                 });
+                return;
+            }
+            // DM: Paginated Block Kit UI (25 per page)
+            const pageSize = 25;
+            const page = 0;
+            const totalPages = Math.ceil(keys.length / pageSize);
+            const pageKeys = keys.slice(page * pageSize, (page + 1) * pageSize);
+            const blocks = [];
+            blocks.push({
+                type: 'section',
+                text: { type: 'mrkdwn', text: `*Factoids* (Page ${page + 1} of ${totalPages})` }
+            });
+            // Build hash-to-key mapping for this page
+            const hashToKey: Record<string, string> = {};
+            for (const key of pageKeys) {
+                const fact = factoids.data[key];
+                const preview = fact.value[0]?.slice(0, 60) + (fact.value[0]?.length > 60 ? '…' : '');
+                const hash = crypto.createHash('sha256').update(key).digest('hex').slice(0, 8);
+                hashToKey[hash] = key;
+                blocks.push({
+                    type: 'section',
+                    text: { type: 'mrkdwn', text: `*${fact.key}*: ${preview}` },
+                    accessory: {
+                        type: 'overflow',
+                        options: [
+                            { text: { type: 'plain_text', text: 'Edit' }, value: `edit__${hash}__${page}` },
+                            { text: { type: 'plain_text', text: 'Delete' }, value: `delete__${hash}__${page}` },
+                        ],
+                        action_id: 'factoid_row_action',
+                    },
+                });
+            }
+            // Store mapping in memory for this user and page
+            if (msg.user) {
+                factoidHashMaps.set(`${msg.user}:${page}`, hashToKey);
+            }
+            // Pagination controls
+            const elements = [];
+            if (page > 0) {
+                elements.push({
+                    type: 'button',
+                    text: { type: 'plain_text', text: 'Previous' },
+                    value: `prev__${page - 1}`,
+                    action_id: 'factoid_page_prev',
+                });
+            }
+            if (page < totalPages - 1) {
+                elements.push({
+                    type: 'button',
+                    text: { type: 'plain_text', text: 'Next' },
+                    value: `next__${page + 1}`,
+                    action_id: 'factoid_page_next',
+                });
+            }
+            if (elements.length > 0) {
+                blocks.push({
+                    type: 'actions',
+                    elements,
+                });
+            }
+            // Post the initial message and store channel/ts
+            const result = await client.chat.postMessage({
+                channel: msg.user,
+                blocks,
+                text: 'Factoid list (interactive)'
+            });
+            // Store the channel and ts in memory for this user (for this session)
+            if (result.ts && result.channel) {
+                factoidListRefs.set(msg.user, { channel: result.channel, ts: result.ts });
             }
         } catch (error) {
             console.error('Error listing factoids:', error);
@@ -263,12 +341,21 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         }
 
         if (fact) {
-            await say({
-                text: factString(fact),
-                unfurl_links: fact.previewLinks !== false, // True if undefined or true
-                unfurl_media: fact.previewLinks !== false, // True if undefined or true
-                ...(msg.thread_ts && { thread_ts: msg.thread_ts })
-            });
+            if (fact.reply) {
+                await say({
+                    text: fact.value[0],
+                    unfurl_links: fact.previewLinks !== false,
+                    unfurl_media: fact.previewLinks !== false,
+                    ...(msg.thread_ts && { thread_ts: msg.thread_ts })
+                });
+            } else {
+                await say({
+                    text: factString(fact),
+                    unfurl_links: fact.previewLinks !== false,
+                    unfurl_media: fact.previewLinks !== false,
+                    ...(msg.thread_ts && { thread_ts: msg.thread_ts })
+                });
+            }
         }
     });
 
@@ -390,12 +477,21 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             }
 
             if (fact) {
-                await say({
-                    text: factString(fact),
-                    unfurl_links: fact.previewLinks !== false, // True if undefined or true
-                    unfurl_media: fact.previewLinks !== false, // True if undefined or true
-                    thread_ts: mention.thread_ts || mention.ts
-                });
+                if (fact.reply) {
+                    await say({
+                        text: fact.value[0],
+                        unfurl_links: fact.previewLinks !== false,
+                        unfurl_media: fact.previewLinks !== false,
+                        thread_ts: mention.thread_ts || mention.ts
+                    });
+                } else {
+                    await say({
+                        text: factString(fact),
+                        unfurl_links: fact.previewLinks !== false,
+                        unfurl_media: fact.previewLinks !== false,
+                        thread_ts: mention.thread_ts || mention.ts
+                    });
+                }
                 return;
             }
         }
@@ -568,12 +664,9 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             }
 
             let value = setMatches[3]?.trim() || '';
-            const hasReply = value.startsWith('<reply>');
-            
-            // If it's a reply, remove the <reply> tag from the value
-            if (hasReply) {
-                value = value.replace(/^<reply>\s*/, '').trim();
-            }
+            // Normalize reply factoid
+            const { values: normValues, reply: hasReply } = normalizeReplyFactoid([value]);
+            value = normValues[0];
             
             // Check for pipe separator followed by preview settings
             let previewLinks = true; // Default to showing previews
@@ -1130,6 +1223,236 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             pendingRestoreRequests.delete(userId);
         }
     });
+
+    // Block Kit action handler stubs for interactive factoid list
+    app.action('factoid_page_prev', async ({ ack, body, action, client, context }) => {
+        await ack();
+        const value = (action as ButtonAction).value;
+        if (!value) return;
+        const [, pageStr] = value.split('__');
+        const page = parseInt(pageStr, 10);
+        const userId = body.user.id;
+        const team = context.teamId || 'default';
+        await postFactoidListPage(client, userId, team, page);
+    });
+    app.action('factoid_page_next', async ({ ack, body, action, client, context }) => {
+        await ack();
+        const value = (action as ButtonAction).value;
+        if (!value) return;
+        const [, pageStr] = value.split('__');
+        const page = parseInt(pageStr, 10);
+        const userId = body.user.id;
+        const team = context.teamId || 'default';
+        await postFactoidListPage(client, userId, team, page);
+    });
+    app.action('factoid_row_action', async ({ ack, body, action, client, context }) => {
+        await ack();
+        const overflowAction = action as OverflowAction;
+        if (!overflowAction.selected_option || typeof overflowAction.selected_option.value !== 'string') {
+            return;
+        }
+        const value = overflowAction.selected_option.value;
+        const [act, hash, pageStr] = value.split('__');
+        const page = parseInt(pageStr, 10);
+        const userId = body.user.id;
+        const hashToKey = factoidHashMaps.get(`${userId}:${page}`);
+        if (!hashToKey) return;
+        const key = hashToKey[hash];
+        const team = context.teamId || 'default';
+        // Load factoid for this key
+        const factoids = await loadFacts(team);
+        const fact = factoids.data[key];
+        if (!fact) return;
+        if (act === 'delete') {
+            // Open confirmation modal
+            await client.views.open({
+                trigger_id: (body as any).trigger_id,
+                view: {
+                    type: 'modal',
+                    callback_id: 'factoid_delete_confirm',
+                    private_metadata: JSON.stringify({ key, page }),
+                    title: { type: 'plain_text', text: 'Delete Factoid' },
+                    submit: { type: 'plain_text', text: 'Delete' },
+                    close: { type: 'plain_text', text: 'Cancel' },
+                    blocks: [
+                        {
+                            type: 'section',
+                            text: { type: 'mrkdwn', text: `Are you sure you want to delete *${fact.key}*?\n\n_${fact.value.join('\n')}_` }
+                        }
+                    ]
+                }
+            });
+        } else if (act === 'edit') {
+            // Open edit modal, always unescape <reply>
+            await client.views.open({
+                trigger_id: (body as any).trigger_id,
+                view: {
+                    type: 'modal',
+                    callback_id: 'factoid_edit_submit',
+                    private_metadata: JSON.stringify({ key, page }),
+                    title: { type: 'plain_text', text: 'Edit Factoid' },
+                    submit: { type: 'plain_text', text: 'Save' },
+                    close: { type: 'plain_text', text: 'Cancel' },
+                    blocks: [
+                        {
+                            type: 'input',
+                            block_id: 'factoid_value',
+                            label: { type: 'plain_text', text: 'Value(s) (separate multiple with |)' },
+                            element: {
+                                type: 'plain_text_input',
+                                action_id: 'value',
+                                initial_value: fact.value.map(unescapeReply).join(' | '),
+                                multiline: true
+                            }
+                        },
+                        {
+                            type: 'input',
+                            block_id: 'factoid_preview',
+                            label: { type: 'plain_text', text: 'Link Previews' },
+                            element: {
+                                type: 'static_select',
+                                action_id: 'preview',
+                                options: [
+                                    { text: { type: 'plain_text', text: 'Enabled' }, value: 'preview' },
+                                    { text: { type: 'plain_text', text: 'Disabled' }, value: 'nopreview' }
+                                ],
+                                initial_option: fact.previewLinks === false
+                                    ? { text: { type: 'plain_text', text: 'Disabled' }, value: 'nopreview' }
+                                    : { text: { type: 'plain_text', text: 'Enabled' }, value: 'preview' }
+                            }
+                        }
+                    ]
+                }
+            });
+        }
+    });
+
+    // Handle delete confirmation modal
+    app.view('factoid_delete_confirm', async ({ ack, body, view, client, context }) => {
+        await ack();
+        const { key, page } = JSON.parse(view.private_metadata);
+        const userId = body.user.id;
+        const team = (body.team && body.team.id) ? body.team.id : (context.teamId || 'default');
+        const factoids = await loadFacts(team);
+        delete factoids.data[key];
+        await saveFacts(team, factoids);
+        // Remove from in-memory map
+        const hashToKey = factoidHashMaps.get(`${userId}:${page}`);
+        if (hashToKey) {
+            for (const hash in hashToKey) {
+                if (hashToKey[hash] === key) {
+                    delete hashToKey[hash];
+                }
+            }
+        }
+        // Refresh list in DM
+        await postFactoidListPage(client, userId, team, page);
+    });
+
+    // Handle edit modal submission
+    app.view('factoid_edit_submit', async ({ ack, body, view, client, context }) => {
+        await ack();
+        const { key, page } = JSON.parse(view.private_metadata);
+        const userId = body.user.id;
+        const team = (body.team && body.team.id) ? body.team.id : (context.teamId || 'default');
+        const values = view.state.values;
+        const valueInput = values['factoid_value']?.['value']?.value;
+        const previewInput = values['factoid_preview']?.['preview']?.selected_option?.value;
+        if (typeof valueInput === 'string' && typeof previewInput === 'string') {
+            // Always unescape and normalize before saving
+            const splitValues = valueInput.split('|').map(v => unescapeReply(v.trim())).filter(Boolean);
+            const { values: newValues, reply } = normalizeReplyFactoid(splitValues);
+            const previewLinks = previewInput === 'preview';
+            const factoids = await loadFacts(team);
+            if (factoids.data[key]) {
+                factoids.data[key].value = newValues;
+                factoids.data[key].previewLinks = previewLinks;
+                factoids.data[key].reply = reply;
+                await saveFacts(team, factoids);
+            }
+        }
+        // Refresh list in DM
+        await postFactoidListPage(client, userId, team, page);
+    });
+
+    // Helper to post a factoid list page to a DM
+    async function postFactoidListPage(client: any, userId: string, team: string, page: number) {
+        const factoids = await loadFacts(team);
+        const keys = Object.keys(factoids.data).sort();
+        const pageSize = 25;
+        const totalPages = Math.ceil(keys.length / pageSize);
+        const pageNum = Math.max(0, Math.min(page, totalPages - 1));
+        const pageKeys = keys.slice(pageNum * pageSize, (pageNum + 1) * pageSize);
+        const blocks = [];
+        blocks.push({
+            type: 'section',
+            text: { type: 'mrkdwn', text: `*Factoids* (Page ${pageNum + 1} of ${totalPages})` }
+        });
+        const hashToKey: Record<string, string> = {};
+        for (const key of pageKeys) {
+            const fact = factoids.data[key];
+            const preview = fact.value[0]?.slice(0, 60) + (fact.value[0]?.length > 60 ? '…' : '');
+            const hash = crypto.createHash('sha256').update(key).digest('hex').slice(0, 8);
+            hashToKey[hash] = key;
+            blocks.push({
+                type: 'section',
+                text: { type: 'mrkdwn', text: `*${fact.key}*: ${preview}` },
+                accessory: {
+                    type: 'overflow',
+                    options: [
+                        { text: { type: 'plain_text', text: 'Edit' }, value: `edit__${hash}__${pageNum}` },
+                        { text: { type: 'plain_text', text: 'Delete' }, value: `delete__${hash}__${pageNum}` },
+                    ],
+                    action_id: 'factoid_row_action',
+                },
+            });
+        }
+        // Store mapping in memory for this user and page
+        factoidHashMaps.set(`${userId}:${pageNum}`, hashToKey);
+        // Pagination controls
+        const elements = [];
+        if (pageNum > 0) {
+            elements.push({
+                type: 'button',
+                text: { type: 'plain_text', text: 'Previous' },
+                value: `prev__${pageNum - 1}`,
+                action_id: 'factoid_page_prev',
+            });
+        }
+        if (pageNum < totalPages - 1) {
+            elements.push({
+                type: 'button',
+                text: { type: 'plain_text', text: 'Next' },
+                value: `next__${pageNum + 1}`,
+                action_id: 'factoid_page_next',
+            });
+        }
+        if (elements.length > 0) {
+            blocks.push({
+                type: 'actions',
+                elements,
+            });
+        }
+        // Use chat.update if channel/ts is available, otherwise postMessage
+        const ref = factoidListRefs.get(userId);
+        if (ref && ref.channel && ref.ts) {
+            await client.chat.update({
+                channel: ref.channel,
+                ts: ref.ts,
+                blocks,
+                text: 'Factoid list (interactive)'
+            });
+        } else {
+            const result = await client.chat.postMessage({
+                channel: userId,
+                blocks,
+                text: 'Factoid list (interactive)'
+            });
+            if (result.ts && result.channel) {
+                factoidListRefs.set(userId, { channel: result.channel, ts: result.ts });
+            }
+        }
+    }
 };
 
 export default factoidsPlugin;
