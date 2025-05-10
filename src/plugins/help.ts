@@ -60,6 +60,30 @@ const helpText: HelpText = {
             { pattern: 'identify yourself', description: 'Show bot info' },
             { pattern: 'who are you', description: 'Show bot identity' }
         ]
+    },
+    localllm: {
+        title: 'Local LLM (Phi-2)',
+        description: 'Interact with a local Large Language Model for natural language responses. Only the LLM plugin responds to the prompt command due to exclusivity.',
+        commands: [
+            { pattern: '@bot prompt: <your question>', description: 'Ask the local LLM a question or request. Example: @bot prompt: What is headless CMS?' }
+        ],
+        details: `
+How it works:
+- The LLM runs entirely on the Lullabot server. It does **not** connect to any external APIs, does **not** run any tools, and does **not** access the internet in any way. All processing is local and private.
+- The model used is Phi-2 (https://huggingface.co/microsoft/phi-2), an open-source language model developed by Microsoft. Phi-2 is designed for efficiency and strong general language understanding, with a focus on clear, helpful, and safe responses.
+
+Limitations:
+- No Memory: Each prompt is processed independently. The LLM does not remember previous messages or conversations.
+- No Tools or Web Access: The model cannot look up real-time information, run code, or access external resources.
+- Training Cutoff: The model's knowledge is limited to what was available up to its last training date (late 2023). It cannot answer questions about events or developments after that time.
+- Single-Turn Context: Each message is its own context. For follow-up questions, you must provide all necessary background in your prompt.
+
+Usage Example:
+  @bot prompt: What is headless CMS?
+  @bot prompt: Tell me a joke about programming
+
+The bot will reply directly in the channel where it was mentioned (not in a thread), with a helpful, clear, and brand-aligned answer.
+        `
     }
 };
 
@@ -71,6 +95,9 @@ function formatPluginHelp(plugin: string): string | null {
     help.commands.forEach(cmd => {
         response += `• \`${cmd.pattern}\` - ${cmd.description}\n`;
     });
+    if (help.details) {
+        response += `\n${help.details.trim()}\n`;
+    }
     return response;
 }
 

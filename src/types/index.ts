@@ -22,6 +22,7 @@ export interface HelpSection {
     title: string;
     description: string;
     commands: Command[];
+    details?: string;
 }
 
 export interface HelpText {
