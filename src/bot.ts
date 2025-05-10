@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { config } from 'dotenv';
 import { Plugin } from './types';
+import { initializeModel as initializeLlmService } from './services/LocalLlmService';
 
 config();
 
@@ -58,6 +59,11 @@ const loadPlugins = async (app: App): Promise<void> => {
     try {
         // Load plugins before starting the app
         await loadPlugins(app);
+
+        // Initialize the Local LLM Service
+        console.log('Initializing Local LLM Service...');
+        await initializeLlmService();
+        console.log('✅ Local LLM Service initialized successfully.');
         
         // Start the app
         const port = process.env.PORT || 3000;

@@ -13,6 +13,7 @@
     - Greetings (hello.ts)
     - Uptime
     - Botsnack
+    - Local LLM plugin (Phi-2) for natural language responses, with exclusive pattern handling
 
 ## Recently Completed
 - Added link preview control for factoids (May 2025)
@@ -23,11 +24,14 @@
 - Added comprehensive test cases for factoids plugin
 - Enhanced message threading support in plugins
 - Improved factoid list display to reduce visual clutter
+- Integrated Local LLM plugin (Phi-2) for prompt-based natural language responses
+- Pattern registry now supports exclusive patterns, ensuring only one plugin responds to certain commands (e.g., prompt:)
 
 ## Current Status
 - Active development with regular improvements
 - Recent focus on factoid functionality and user experience
 - Several dependency updates pending in open PRs
+- Local LLM plugin and pattern registry exclusivity are now live and working
 
 ## Known Issues/Risks
 - **Data Storage Scalability:** File-based JSON storage might become slow or unwieldy with very large datasets or high concurrency.

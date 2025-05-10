@@ -1,7 +1,7 @@
 # Active Context: Lullabot Slack Bot
 
 ## Current Focus
-Link preview management for factoids and general bot improvements.
+Link preview management for factoids, Local LLM plugin integration, and pattern registry exclusivity for cleaner command handling.
 
 ## Recent Changes
 - Added link preview control for factoids (PR #77, fixes #76)
@@ -11,6 +11,8 @@ Link preview management for factoids and general bot improvements.
 - Updated dependencies (Node.js, TypeScript, etc.)
 - Fixed various factoid matching patterns to address edge cases
 - Changed factoid list to display a lock icon (🔒) only for factoids with disabled link previews
+- Integrated Local LLM plugin (Phi-2) for natural language responses
+- Pattern registry now supports exclusive patterns, ensuring only one plugin responds to certain commands (e.g., prompt:)
 
 ## Next Steps
 - Merge pending dependency updates (several PRs open)

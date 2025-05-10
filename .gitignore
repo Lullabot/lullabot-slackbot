@@ -5,3 +5,4 @@ dist/
 .working
 .vscode
 coverage/
+models/

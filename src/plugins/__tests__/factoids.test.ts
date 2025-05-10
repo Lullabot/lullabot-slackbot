@@ -1,6 +1,7 @@
 import { App } from '@slack/bolt';
-import factoidsPlugin from '../factoids';
-import patternRegistry from '../../services/pattern-registry';
+import factoidsPlugin from '../factoids.js';
+import patternRegistry from '../../services/pattern-registry.js';
+import { jest } from '@jest/globals';
 
 // Mock dependencies
 jest.mock('fs', () => ({

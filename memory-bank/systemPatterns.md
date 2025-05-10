@@ -14,6 +14,7 @@
     - Provides a centralized registry for command patterns.
     - Helps prevent conflicts between plugins.
     - Allows patterns to have priority levels for handling order.
+    - **Supports exclusivity:** If a pattern is registered as exclusive, only the owning plugin will respond to matching messages; all others are suppressed.
 - **Configuration:** Uses `.env` file for Slack API tokens (`BOT_TOKEN`, `SLACK_APP_TOKEN`, `CLIENT_SIGNING_SECRET`). Loaded via `dotenv` package.
 - **Data Storage:** Uses file-based JSON storage in the `data/teams` directory. Karma and Factoids both use this storage mechanism to preserve user data across restarts.
 
@@ -44,4 +45,10 @@ graph TD
   - Uses lock icon (🔒) to indicate factoids with disabled link previews
 - Improved pattern matching for more reliable message handling
 - Enhanced thread handling in message responses
-- Expanded test coverage for critical plugins 
+- Expanded test coverage for critical plugins
+- **Added Local LLM plugin:**
+  - Provides natural language responses using a local Phi-2 model
+  - Uses a hardcoded system prompt for Lullabot brand voice
+  - Registers the `prompt:` pattern as exclusive, ensuring only the LLM plugin responds to those messages
+- **Pattern Registry exclusivity:**
+  - Plugins can now register exclusive patterns to prevent other plugins from responding to the same message 

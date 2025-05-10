@@ -190,6 +190,9 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     // Add new list command
     app.message(/^!factoid:\s*list$/i, async ({ message, say, context, client, body }) => {
         const msg = message as GenericMessageEvent;
+        // Exclusivity check
+        const exclusive = patternRegistry.getExclusiveMatch(msg.text || '');
+        if (exclusive && exclusive.pluginName !== 'factoids') return;
         const team = context.teamId || 'default';
         try {
             const factoids = await loadFacts(team);
@@ -291,6 +294,9 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     // Query a factoid - triggered by a pattern followed by ? or !
     app.message(/^((?:<@[UW][A-Z0-9]+>)|(?:@[a-zA-Z0-9._-]+)|(?:[a-zA-Z0-9._-]+(?:\s+[a-zA-Z0-9._-]+)*))[!?]$/i, async ({ message, context, client, say }) => {
         const msg = message as GenericMessageEvent;
+        // Exclusivity check
+        const exclusive = patternRegistry.getExclusiveMatch(msg.text || '');
+        if (exclusive && exclusive.pluginName !== 'factoids') return;
         const text = msg.text || '';
 
         // Keep the word count check active as a safeguard
@@ -362,6 +368,9 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     // Handle YES/NO responses to forget confirmation
     app.message(/^(YES|NO)$/i, async ({ message, say }) => {
         const msg = message as GenericMessageEvent;
+        // Exclusivity check
+        const exclusive = patternRegistry.getExclusiveMatch(msg.text || '');
+        if (exclusive && exclusive.pluginName !== 'factoids') return;
         const userId = msg.user;
         const pendingRequest = pendingForgetRequests.get(userId);
         
@@ -409,6 +418,9 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     // Set factoid - only through direct mentions
     app.event('app_mention', async ({ event, client, say, context }) => {
         const mention = event as AppMentionEvent;
+        // Exclusivity check
+        const exclusive = patternRegistry.getExclusiveMatch(mention.text || '');
+        if (exclusive && exclusive.pluginName !== 'factoids') return;
         // Remove the bot mention, decode HTML entities, and trim
         const text = decodeHtmlEntities(mention.text.replace(/<@[^>]+>\s*/, '').trim());
 

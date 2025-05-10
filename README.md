@@ -223,7 +223,43 @@ botsnack              # Give the bot a snack
 @bot botsnack         # Give the bot a snack (with mention)
 ```
 
+### Local LLM (Phi-2)
 
+Interact with a local Large Language Model (LLM) running on the server for natural language responses, without relying on external APIs.
+
+Features:
+- Uses the open-source Phi-2 model (via node-llama-cpp)
+- Responds to prompts with a consistent Lullabot brand voice
+- System prompt is hardcoded for brand tone and clarity
+- Only one plugin (LLM) responds to the `prompt:` command due to exclusivity
+
+Examples:
+
+```
+@bot prompt: What is headless CMS?
+@bot prompt: Tell me a joke about programming
+```
+
+- The bot will reply in-thread with a helpful, clear, and brand-aligned answer.
+- Only the LLM plugin will respond to `prompt:`; other plugins are suppressed for this pattern.
+
+## Pattern Registry
+
+The Pattern Registry is a core service that manages command patterns across all plugins to prevent conflicts and control message handling order.
+
+- Located at `src/services/pattern-registry.ts`
+- Plugins register their regex patterns with the registry, specifying priority and (optionally) exclusivity
+- If a message matches an exclusive pattern, only the owning plugin will respond; all others are suppressed
+- Patterns are checked in priority order (higher first)
+
+**API:**
+- `registerPattern(pattern: RegExp, pluginName: string, priority?: number, exclusive?: boolean)`
+- `matchesAnyPattern(text: string): boolean`
+- `getExclusiveMatch(text: string): PatternEntry | null`
+- `getPatterns(): PatternEntry[]`
+
+**Example:**
+- The LLM plugin registers `prompt:` as an exclusive pattern, so factoids and other plugins do not respond to those messages.
 
 ## Data Storage
 

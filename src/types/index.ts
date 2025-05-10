@@ -33,10 +33,12 @@ export interface PatternEntry {
     pattern: RegExp;  // The regex pattern for the command
     pluginName: string;  // The name of the plugin that registered the pattern
     priority: number;  // Higher priority patterns are checked first
+    exclusive?: boolean; // If true, no other plugin should process if this matches
 }
 
 export interface PatternRegistry {
-    registerPattern(pattern: RegExp, pluginName: string, priority?: number): void;
+    registerPattern(pattern: RegExp, pluginName: string, priority?: number, exclusive?: boolean): void;
     matchesAnyPattern(text: string): boolean;
     getPatterns(): PatternEntry[];
+    getExclusiveMatch(text: string): PatternEntry | null;
 } 
