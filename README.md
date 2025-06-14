@@ -47,6 +47,8 @@ npm install
 BOT_TOKEN=xoxb-your-bot-token
 SLACK_APP_TOKEN=xapp-your-app-token
 CLIENT_SIGNING_SECRET=your-signing-secret
+SLACK_SHARED_SECRET=your-shared-secret-for-prompt-library
+GITHUB_TOKEN=your-github-personal-access-token
 ```
 
 ### Development Commands
@@ -222,6 +224,45 @@ Examples:
 botsnack              # Give the bot a snack
 @bot botsnack         # Give the bot a snack (with mention)
 ```
+
+### Add Prompt
+
+Submit valuable Slack messages as prompts to the Lullabot prompt library for future reference and sharing.
+
+Features:
+- Takes a Slack message permalink and submits it to the prompt library
+- Captures original message content, author, and invoker information
+- Validates permalink format and fetches message details
+- Secure integration with GitHub repository dispatch system
+
+Examples:
+```
+@bot add-prompt https://workspace.slack.com/archives/C1234567890/p1234567890123456
+```
+
+**Setup Requirements:**
+- `SLACK_SHARED_SECRET` environment variable must be configured
+- `GITHUB_TOKEN` environment variable with a GitHub Personal Access Token
+- Shared secret must match the one configured in the prompt_library repository
+
+**GitHub Token Setup:**
+1. Go to https://github.com/settings/tokens
+2. Click "Generate new token" → "Generate new token (classic)"
+3. Give it a descriptive name (e.g., "Lullabot Slack Bot - Add Prompt")
+4. Select these scopes:
+   - ✅ `repo` (full control of private repositories)
+   - ✅ `workflow` (update GitHub Action workflows)
+5. Click "Generate token" and copy the token (starts with `ghp_`)
+6. Add to your `.env` file: `GITHUB_TOKEN=ghp_your_token_here`
+
+**Alternative: Fine-grained Personal Access Token:**
+1. Go to https://github.com/settings/personal-access-tokens/fine-grained
+2. Create a new token with repository access to `Lullabot/prompt_library`
+3. Grant these repository permissions:
+   - Contents: Write
+   - Issues: Write
+   - Metadata: Read
+   - Pull requests: Write
 
 
 
