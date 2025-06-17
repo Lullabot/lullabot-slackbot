@@ -164,7 +164,16 @@ async function submitPrompt(submission: PromptSubmission): Promise<void> {
         }
     };
 
-    console.log('Debug - Sending payload:', JSON.stringify(payload, null, 2));
+    const sanitizedPayload = {
+        event_type: payload.event_type,
+        client_payload: {
+            content: payload.client_payload.content,
+            author: payload.client_payload.author,
+            invoker: payload.client_payload.invoker,
+            permalink: payload.client_payload.permalink
+        }
+    };
+    console.log('Debug - Sending sanitized payload:', JSON.stringify(sanitizedPayload, null, 2));
 
     const response = await fetch('https://api.github.com/repos/Lullabot/prompt_library/dispatches', {
         method: 'POST',
