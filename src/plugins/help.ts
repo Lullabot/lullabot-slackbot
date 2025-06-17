@@ -60,6 +60,13 @@ const helpText: HelpText = {
             { pattern: 'identify yourself', description: 'Show bot info' },
             { pattern: 'who are you', description: 'Show bot identity' }
         ]
+    },
+    'add-prompt': {
+        title: 'Add Prompt',
+        description: 'Submit Slack messages as prompts to the prompt library',
+        commands: [
+            { pattern: '@bot add-prompt <permalink>', description: 'Add a Slack message as a prompt using its permalink' }
+        ]
     }
 };
 
