@@ -254,6 +254,7 @@ Examples:
 6. Grant these **minimum required** repository permissions:
    - ✅ **Issues: Write** (to create issues from Slack prompts)
    - ✅ **Metadata: Read** (to access basic repository information)
+   - ✅ **Contents: Write** (to read/write repository contents)
 7. Click "Generate token" and copy the token (starts with `github_pat_`)
 8. Add to your `.env` file: `GITHUB_TOKEN=github_pat_your_token_here`
 
