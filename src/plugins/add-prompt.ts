@@ -16,11 +16,13 @@ const addPromptPlugin: Plugin = async (app: App): Promise<void> => {
         // Get the original message permalink from command text
         let messageUrl = addPromptMatch[1].trim();
         
-        // Debug: log what we received
-        console.log('Debug - Raw text:', JSON.stringify(text));
-        console.log('Debug - Extracted URL:', JSON.stringify(messageUrl));
-        console.log('Debug - URL length:', messageUrl.length);
-        console.log('Debug - URL char codes:', [...messageUrl].map(c => c.charCodeAt(0)).join(','));
+        // Debug: log what we received (only in non-production environments)
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('Debug - Raw text:', JSON.stringify(text));
+            console.log('Debug - Extracted URL:', JSON.stringify(messageUrl));
+            console.log('Debug - URL length:', messageUrl.length);
+            console.log('Debug - URL char codes:', [...messageUrl].map(c => c.charCodeAt(0)).join(','));
+        }
         
         // Clean up URL - remove Slack's angle brackets if present
         messageUrl = messageUrl.replace(/^<|>$/g, '');
