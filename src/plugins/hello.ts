@@ -6,7 +6,16 @@ import patternRegistry from '../services/pattern-registry';
 
 const helloPlugin: Plugin = async (app: App): Promise<void> => {
     // Define patterns for greetings
-    const patterns = ['^hello\\!?$', '^hey\\!?$', '^hi\\!?$', '^:wave:$'];
+    const patterns = [
+        '^hello\\!?$', 
+        '^hey\\!?$', 
+        '^hi\\!?$', 
+        '^:wave:$',
+        '^good morning\\!?$',
+        '^g\'morning\\!?$',
+        '^morning\\!?$',
+        '^gm\\!?$'
+    ];
     const greetingRegex = new RegExp(`(${patterns.join('|')})`, 'i');
     
     // Register greeting patterns with the registry
