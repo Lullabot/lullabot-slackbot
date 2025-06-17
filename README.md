@@ -245,24 +245,25 @@ Examples:
 - `GITHUB_TOKEN` environment variable with a GitHub Personal Access Token
 - Shared secret must match the one configured in the prompt_library repository
 
-**GitHub Token Setup:**
+**GitHub Token Setup (Recommended: Fine-grained):**
+1. Go to https://github.com/settings/personal-access-tokens/fine-grained
+2. Click "Generate new token"
+3. Give it a descriptive name (e.g., "Lullabot Slack Bot - Add Prompt")
+4. Set expiration as desired (90 days recommended)
+5. Under "Repository access", select "Selected repositories" → choose `Lullabot/prompt_library`
+6. Grant these **minimum required** repository permissions:
+   - ✅ **Issues: Write** (to create issues from Slack prompts)
+   - ✅ **Metadata: Read** (to access basic repository information)
+7. Click "Generate token" and copy the token (starts with `github_pat_`)
+8. Add to your `.env` file: `GITHUB_TOKEN=github_pat_your_token_here`
+
+**Alternative: Classic Personal Access Token:**
 1. Go to https://github.com/settings/tokens
 2. Click "Generate new token" → "Generate new token (classic)"
-3. Give it a descriptive name (e.g., "Lullabot Slack Bot - Add Prompt")
-4. Select these scopes:
+3. Select these scopes:
    - ✅ `repo` (full control of private repositories)
    - ✅ `workflow` (update GitHub Action workflows)
-5. Click "Generate token" and copy the token (starts with `ghp_`)
-6. Add to your `.env` file: `GITHUB_TOKEN=ghp_your_token_here`
-
-**Alternative: Fine-grained Personal Access Token:**
-1. Go to https://github.com/settings/personal-access-tokens/fine-grained
-2. Create a new token with repository access to `Lullabot/prompt_library`
-3. Grant these repository permissions:
-   - Contents: Write
-   - Issues: Write
-   - Metadata: Read
-   - Pull requests: Write
+4. Add to your `.env` file: `GITHUB_TOKEN=ghp_your_token_here`
 
 
 
