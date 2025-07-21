@@ -47,16 +47,41 @@ async function handlePrompt(prompt, requestId) {
         return { error: 'Model not initialized', requestId };
     }
     try {
-        const contextInstance = await modelInstance.createContext(); // Create a new context for each prompt
-        const session = new LlamaChatSessionConstructor({ // Use the stored constructor
-            contextSequence: contextInstance.getSequence(),
+        const contextInstance = await modelInstance.createContext();
+        const session = new LlamaChatSessionConstructor({
+            contextSequence: contextInstance.getSequence()
         });
-        // Prepend the system prompt to the user prompt
-        const fullPrompt = `${SYSTEM_PROMPT}\n\n${prompt}`;
-        const aiResponse = await session.prompt(fullPrompt, {
-            maxTokens: contextInstance.contextSize ? Math.floor(contextInstance.contextSize / 4) : 512,
+        
+        // Use a natural conversational format
+        const simplePrompt = SYSTEM_PROMPT + `\n\nPlease respond to this request:
+
+${prompt}
+
+Response:`;
+        
+        const aiResponse = await session.prompt(simplePrompt, {
+            maxTokens: 200,
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            repeatPenalty: 1.1,
+            stopOnAbortSignal: true,
+            stopStrings: ['\nYou are', '\n\nYou are', 'Response:']
         });
-        return { response: aiResponse, requestId };
+        
+        // Clean up the response - remove any repeated patterns
+        let cleanResponse = aiResponse
+            .replace(/^Response:\s*/i, '')
+            .replace(/\nYou are.*$/s, '')
+            .replace(/Response:\s*$/s, '')
+            .trim();
+        
+        // If response is just repetitive tokens, return a fallback
+        if (cleanResponse.split(' ').length < 3 || /^(Assistant|AI|A:)\s*$/i.test(cleanResponse)) {
+            cleanResponse = "I apologize, but I'm having trouble generating a proper response right now.";
+        }
+        
+        return { response: cleanResponse, requestId };
     } catch (error) {
         console.error('[Worker] Error during LLM inference:', error);
         return { error: error.message || 'Error during inference', requestId };
@@ -77,14 +102,7 @@ process.on('message', async (message) => {
     }
 });
 
-// Optional: Initialize model on start if preferred, or wait for command
-// initializeModel().then(success => {
-// if (success && process.send) {
-// process.send({ type: 'initializationComplete', success: true, autoInitialized: true });
-// }
-// });
-
 // Signal readiness or successful import (optional)
 if (process.send) {
     process.send({ type: 'workerReady' });
-} 
+}
