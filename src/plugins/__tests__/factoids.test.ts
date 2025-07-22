@@ -67,7 +67,8 @@ describe('Factoids Plugin', () => {
                 messageHandler = handler;
             }),
             event: jest.fn(),
-            action: jest.fn()
+            action: jest.fn(),
+            view: jest.fn()
         };
         
         // Initialize the plugin
