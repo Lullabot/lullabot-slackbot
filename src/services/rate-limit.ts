@@ -37,11 +37,11 @@ export function checkRateLimit(userId: string, options: RateLimitOptions): boole
         };
         rateLimitStore.set(key, entry);
         
-        logger.debug(`Rate limit: New window for ${key}`, {
+        logger.debug({
             count: entry.count,
             maxRequests: options.maxRequests,
             resetTime: new Date(entry.resetTime).toISOString()
-        });
+        }, `Rate limit: New window for ${key}`);
         
         return true; // First request in window is always allowed
     }
@@ -51,11 +51,11 @@ export function checkRateLimit(userId: string, options: RateLimitOptions): boole
         const remainingMs = entry.resetTime - now;
         const remainingSeconds = Math.ceil(remainingMs / 1000);
         
-        logger.info(`Rate limit exceeded for ${key}`, {
+        logger.info({
             count: entry.count,
             maxRequests: options.maxRequests,
             remainingSeconds
-        });
+        }, `Rate limit exceeded for ${key}`);
         
         return false;
     }
@@ -63,11 +63,11 @@ export function checkRateLimit(userId: string, options: RateLimitOptions): boole
     // Increment counter and allow request
     entry.count++;
     
-    logger.debug(`Rate limit: Incrementing counter for ${key}`, {
+    logger.debug({
         count: entry.count,
         maxRequests: options.maxRequests,
         resetTime: new Date(entry.resetTime).toISOString()
-    });
+    }, `Rate limit: Incrementing counter for ${key}`);
     
     return true;
 }

@@ -99,7 +99,7 @@ const karmaPlugin: Plugin = async (app: App): Promise<void> => {
                 text: getRateLimitMessage(remainingTime),
                 ...(msg.thread_ts && { thread_ts: msg.thread_ts })
             });
-            logger.info('Rate limit exceeded for karma operation', { userId: msg.user });
+            logger.info({ userId: msg.user }, 'Rate limit exceeded for karma operation');
             return;
         }
         
