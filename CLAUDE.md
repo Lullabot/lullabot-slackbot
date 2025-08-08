@@ -118,3 +118,76 @@ Bot uses Slack Socket Mode for real-time events:
 - **Slack Types**: Uses official `@slack/types` package
 - **Module Resolution**: Node-style module resolution
 - **Build Output**: `dist/` directory for production
+
+## GitHub Issue Type Field Management
+
+To update the GitHub issue type field (not labels or project fields), use the GraphQL API:
+
+### Get Available Issue Types
+```bash
+gh api graphql -f query='
+query {
+  repository(owner: "Lullabot", name: "lullabot-slackbot") {
+    issueTypes(first: 50) {
+      nodes {
+        id
+        name
+      }
+    }
+  }
+}'
+```
+
+Current issue types and their IDs:
+- Task: `IT_kwDOAATm884AAZex`
+- Bug: `IT_kwDOAATm884AAZe0`
+- Feature: `IT_kwDOAATm884AAZe2`
+- Spike: `IT_kwDOAATm884BgDJL`
+- Epic: `IT_kwDOAATm884BgDJV`
+
+### Get Issue's Current Type and Node ID
+```bash
+gh api graphql -f query='
+query {
+  repository(owner: "Lullabot", name: "lullabot-slackbot") {
+    issue(number: ISSUE_NUMBER) {
+      id
+      issueType {
+        name
+      }
+    }
+  }
+}'
+```
+
+### Update Issue Type
+```bash
+gh api graphql -f query='
+mutation {
+  updateIssue(input: {id: "ISSUE_NODE_ID", issueTypeId: "TYPE_ID"}) {
+    issue {
+      number
+      issueType {
+        name
+      }
+    }
+  }
+}'
+```
+
+Example: Update issue #105 to Bug type:
+```bash
+gh api graphql -f query='
+mutation {
+  updateIssue(input: {id: "I_kwDOH1dPoM7EVb98", issueTypeId: "IT_kwDOAATm884AAZe0"}) {
+    issue {
+      number
+      issueType {
+        name
+      }
+    }
+  }
+}'
+```
+
+Note: This is different from labels or project fields - it's GitHub's built-in issue type field.

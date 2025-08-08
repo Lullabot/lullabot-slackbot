@@ -1,17 +1,15 @@
 import { App } from '@slack/bolt';
 import * as fs from 'fs';
 import * as path from 'path';
-import { config } from 'dotenv';
 import { Plugin } from './types';
+import { config } from './config';
 
-config();
-
-// Initialize the Bolt app
+// Initialize the Bolt app with validated config
 const app = new App({
-    token: process.env.BOT_TOKEN,
-    signingSecret: process.env.CLIENT_SIGNING_SECRET,
+    token: config.BOT_TOKEN,
+    signingSecret: config.CLIENT_SIGNING_SECRET,
     socketMode: true,
-    appToken: process.env.SLACK_APP_TOKEN,
+    appToken: config.SLACK_APP_TOKEN,
 });
 
 // Plugin loader function
