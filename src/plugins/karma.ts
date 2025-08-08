@@ -5,6 +5,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Plugin, Storage } from '../types';
 import patternRegistry from '../services/pattern-registry';
+import { checkRateLimit, RATE_LIMITS, getRateLimitMessage, getRemainingTime } from '../services/rate-limit';
+import { createLogger } from '../logger';
+
+const logger = createLogger('karma');
 
 interface KarmaStorage extends Storage {
     data: {
@@ -87,6 +91,18 @@ const karmaPlugin: Plugin = async (app: App): Promise<void> => {
 
         // Ignore long entries
         if (index.length > 34) return;
+        
+        // Apply rate limiting
+        if (msg.user && !checkRateLimit(msg.user, RATE_LIMITS.karma)) {
+            const remainingTime = getRemainingTime(msg.user, RATE_LIMITS.karma.identifier);
+            await say({
+                text: getRateLimitMessage(remainingTime),
+                ...(msg.thread_ts && { thread_ts: msg.thread_ts })
+            });
+            logger.info('Rate limit exceeded for karma operation', { userId: msg.user });
+            return;
+        }
+        
         // Check for self-karma
         if (user && await isNarcissism(msg.user, index)) {
             await say({
