@@ -67,6 +67,20 @@ const helpText: HelpText = {
         commands: [
             { pattern: '@bot add-prompt <permalink>', description: 'Add a Slack message as a prompt using its permalink' }
         ]
+    },
+    conversions: {
+        title: 'Unit Conversions',
+        description: 'Automatically converts between imperial and metric units',
+        commands: [
+            { pattern: '75°F', description: 'Converts to Celsius (23.9°C)' },
+            { pattern: '100°C', description: 'Converts to Fahrenheit (212°F)' },
+            { pattern: '0 kelvin', description: 'Converts to Celsius (-273.1°C)' },
+            { pattern: '5 miles', description: 'Converts to kilometers (8 km)' },
+            { pattern: '10 km', description: 'Converts to miles (6.2 miles)' },
+            { pattern: '5 K', description: 'Converts to miles (3.1 miles) - K means kilometers' },
+            { pattern: '6 feet', description: 'Converts to meters (1.8 m)' },
+            { pattern: '2 meters', description: 'Converts to feet (6.6 feet)' }
+        ]
     }
 };
 
