@@ -70,16 +70,16 @@ const helpText: HelpText = {
     },
     conversions: {
         title: 'Unit Conversions',
-        description: 'Automatically converts between imperial and metric units',
+        description: 'Converts between imperial and metric units using commands or questions',
         commands: [
-            { pattern: '75°F', description: 'Converts to Celsius (23.9°C)' },
-            { pattern: '100°C', description: 'Converts to Fahrenheit (212°F)' },
-            { pattern: '0 kelvin', description: 'Converts to Celsius (-273.1°C)' },
-            { pattern: '5 miles', description: 'Converts to kilometers (8 km)' },
-            { pattern: '10 km', description: 'Converts to miles (6.2 miles)' },
-            { pattern: '5 K', description: 'Converts 5 kilometers to miles (3.1 miles)' },
-            { pattern: '6 feet', description: 'Converts to meters (1.8 m)' },
-            { pattern: '2 meters', description: 'Converts to feet (6.6 feet)' }
+            { pattern: 'convert 75°F', description: 'Explicit command: "75°F is 23.9°C or 297.0°K"' },
+            { pattern: '@bot convert 100°C', description: 'Bot mention: "100°C is 212°F or 373.1°K"' },
+            { pattern: 'what is 32°F in celsius?', description: 'Question format: "32°F is 0°C or 273.1°K"' },
+            { pattern: '@bot what is 5 miles in km?', description: 'Bot question: "5 miles is 8.0 km"' },
+            { pattern: '75F?', description: 'Quick lookup: "75°F is 23.9°C or 297.0°K"' },
+            { pattern: 'convert 10 km', description: 'Distance conversion: "10 km is 6.2 miles"' },
+            { pattern: 'convert 6 feet', description: 'Imperial to metric: "6 feet is 1.8 meters"' },
+            { pattern: '25C?', description: 'Temperature lookup: "25°C is 77°F or 298.1°K"' }
         ]
     }
 };

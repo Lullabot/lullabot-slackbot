@@ -132,14 +132,15 @@ function getTemperatureUnitAbbreviation(unit: string): string {
 }
 
 const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
-    // Define patterns for temperature and distance detection
+    // Define patterns for temperature and distance detection (used by conversion logic)
     // Note: 'K' alone is treated as kilometers, 'kelvin' is treated as temperature
     const temperaturePattern = /(-?\d+(?:\.\d+)?)\s*°?\s*(f|fahrenheit|c|celsius|kelvin)\b/gi;
     const distancePattern = /(\d+(?:\.\d+)?)\s*(miles?|mi|feet|ft|inches?|in|kilometers?|km|k\b|meters?|m|centimeters?|cm)\b/gi;
     
-    // Register patterns with the registry (low priority since we want to detect, not command)
-    patternRegistry.registerPattern(temperaturePattern, 'conversions', 1);
-    patternRegistry.registerPattern(distancePattern, 'conversions', 1);
+    // Register command patterns with the registry
+    patternRegistry.registerPattern(/^convert\s+(.+)$/i, 'conversions', 1);
+    patternRegistry.registerPattern(/^what\s+is\s+(.+)\s+in\s+(.+)\?$/i, 'conversions', 1);
+    patternRegistry.registerPattern(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)\?$/, 'conversions', 1);
 
     // Function to process conversions in a message
     function processConversions(text: string): string[] {
@@ -151,10 +152,21 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
             try {
                 const value = parseFloat(match[1]);
                 const fromUnit = match[2];
-                const toUnit = getOppositeTemperatureUnit(fromUnit);
-                const converted = convertTemperature(value, fromUnit, toUnit);
                 
-                conversions.push(`${match[1]}°${getTemperatureUnitAbbreviation(fromUnit)} = ${formatNumber(converted)}°${getTemperatureUnitAbbreviation(toUnit)}`);
+                // Convert to all three temperature units
+                const fahrenheit = convertTemperature(value, fromUnit, 'fahrenheit');
+                const celsius = convertTemperature(value, fromUnit, 'celsius');
+                const kelvin = convertTemperature(value, fromUnit, 'kelvin');
+                
+                // Build conversational response showing only the OTHER 2 units
+                const fromUnitLower = fromUnit.toLowerCase();
+                let otherUnits = [];
+                
+                if (fromUnitLower.charAt(0) !== 'f') otherUnits.push(`*${formatNumber(fahrenheit)}°F*`);
+                if (fromUnitLower.charAt(0) !== 'c') otherUnits.push(`*${formatNumber(celsius)}°C*`);
+                if (fromUnitLower !== 'kelvin') otherUnits.push(`*${formatNumber(kelvin)}°K*`);
+                
+                conversions.push(`*${match[1]}°${getTemperatureUnitAbbreviation(fromUnit)}* is ${otherUnits.join(' or ')}`);
             } catch (error) {
                 console.error('Temperature conversion error:', error);
             }
@@ -170,7 +182,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                 
                 if (toUnit !== 'unknown') {
                     const converted = convertDistance(value, fromUnit, toUnit);
-                    conversions.push(`${match[1]} ${fromUnit} = ${formatNumber(converted)} ${toUnit}`);
+                    conversions.push(`*${match[1]} ${fromUnit}* is *${formatNumber(converted)} ${toUnit}*`);
                 }
             } catch (error) {
                 console.error('Distance conversion error:', error);
@@ -180,53 +192,140 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         return conversions;
     }
 
-    // Handle regular messages with conversions
-    app.message(async ({ message, say, client }) => {
+    // Handle explicit convert commands
+    app.message(/^convert\s+(.+)$/i, async ({ message, say, client }) => {
         const msg = message as GenericMessageEvent;
         
         // Skip bot messages to avoid loops
         if (msg.bot_id) return;
-        
-        // Skip messages that are commands to other plugins
-        if (msg.text && patternRegistry.matchesAnyPattern(msg.text)) {
-            return;
-        }
         
         const conversions = processConversions(msg.text || '');
         
         if (conversions.length > 0) {
             try {
                 await say({
-                    text: conversions.join('\n'),
-                    thread_ts: msg.thread_ts || msg.ts
+                    text: conversions.join('\n')
                 });
                 
-                logger.info(`Converted ${conversions.length} units in message from user ${msg.user}`);
+                logger.info(`Converted ${conversions.length} units via convert command from user ${msg.user}`);
             } catch (error) {
                 console.error('Error sending conversion response:', error);
+            }
+        } else {
+            // No valid conversions found in the command
+            await say({
+                text: 'No valid temperature or distance units found. Try something like: `convert 75°F` or `convert 5 miles`'
+            });
+        }
+    });
+
+    // Handle question-based conversion commands  
+    app.message(/^what\s+is\s+(.+)\s+in\s+(.+)\?$/i, async ({ message, say, client }) => {
+        const msg = message as GenericMessageEvent;
+        
+        // Skip bot messages to avoid loops
+        if (msg.bot_id) return;
+        
+        const conversions = processConversions(msg.text || '');
+        
+        if (conversions.length > 0) {
+            try {
+                await say({
+                    text: conversions.join('\n')
+                });
+                
+                logger.info(`Converted ${conversions.length} units via question command from user ${msg.user}`);
+            } catch (error) {
+                console.error('Error sending conversion response:', error);
+            }
+        } else {
+            // No valid conversions found in the question
+            await say({
+                text: 'I couldn\'t find valid units to convert. Try something like: `what is 75°F in celsius?` or `what is 5 miles in km?`'
+            });
+        }
+    });
+
+    // Handle single listener pattern: [number][unit]? (e.g., "34F?", "25 C?", "-40C?")
+    app.message(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)\?$/, async ({ message, say, client }) => {
+        const msg = message as GenericMessageEvent;
+        
+        // Skip bot messages to avoid loops
+        if (msg.bot_id) return;
+        
+        // Construct the unit string from the pattern match
+        const match = msg.text?.match(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)\?$/);
+        if (match) {
+            const unitString = `${match[1]}${match[2]}`;
+            const conversions = processConversions(unitString);
+            
+            if (conversions.length > 0) {
+                try {
+                    await say({
+                        text: conversions.join('\n')
+                    });
+                    
+                    logger.info(`Converted ${conversions.length} units via listener pattern from user ${msg.user}`);
+                } catch (error) {
+                    console.error('Error sending conversion response:', error);
+                }
+            } else {
+                // Unit not recognized
+                await say({
+                    text: `I don't recognize "${match[2]}" as a temperature or distance unit. Try units like F, C, miles, km, feet, etc.`
+                });
             }
         }
     });
 
-    // Handle app mentions with conversions
+    // Handle app mentions with convert commands
     app.event('app_mention', async ({ event, say, client }) => {
         const mention = event as AppMentionEvent;
         
         // Remove the bot mention from the text
         const text = mention.text.replace(/<@[^>]+>\s*/, '').trim();
         
-        const conversions = processConversions(text);
+        // Check if it's a convert command
+        const convertMatch = text.match(/^convert\s+(.+)$/i);
+        const questionMatch = text.match(/^what\s+is\s+(.+)\s+in\s+(.+)\?$/i);
         
-        if (conversions.length > 0) {
-            try {
+        if (convertMatch) {
+            const conversions = processConversions(convertMatch[1]);
+            
+            if (conversions.length > 0) {
+                try {
+                    await say({
+                        text: conversions.join('\n')
+                    });
+                    
+                    logger.info(`Converted ${conversions.length} units via @bot convert command from user ${mention.user}`);
+                } catch (error) {
+                    console.error('Error sending conversion response:', error);
+                }
+            } else {
+                // No valid conversions found in the command
                 await say({
-                    text: conversions.join('\n'),
-                    thread_ts: mention.thread_ts || mention.ts
+                    text: 'No valid temperature or distance units found. Try something like: `@bot convert 75°F` or `@bot convert 5 miles`'
                 });
-                
-                logger.info(`Converted ${conversions.length} units in mention from user ${mention.user}`);
-            } catch (error) {
-                console.error('Error sending conversion response:', error);
+            }
+        } else if (questionMatch) {
+            const conversions = processConversions(text);
+            
+            if (conversions.length > 0) {
+                try {
+                    await say({
+                        text: conversions.join('\n')
+                    });
+                    
+                    logger.info(`Converted ${conversions.length} units via @bot question command from user ${mention.user}`);
+                } catch (error) {
+                    console.error('Error sending conversion response:', error);
+                }
+            } else {
+                // No valid conversions found in the question
+                await say({
+                    text: 'I couldn\'t find valid units to convert. Try something like: `@bot what is 75°F in celsius?` or `@bot what is 5 miles in km?`'
+                });
             }
         }
     });

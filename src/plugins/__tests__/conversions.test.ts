@@ -52,10 +52,10 @@ describe('Conversions Plugin', () => {
     });
 
     describe('Plugin Registration', () => {
-        it('should register patterns with pattern registry', async () => {
+        it('should register command patterns with pattern registry', async () => {
             await conversionsPlugin(app);
             
-            expect(patternRegistry.registerPattern).toHaveBeenCalledTimes(2);
+            expect(patternRegistry.registerPattern).toHaveBeenCalledTimes(3);
             expect(patternRegistry.registerPattern).toHaveBeenCalledWith(
                 expect.any(RegExp),
                 'conversions',
@@ -63,313 +63,319 @@ describe('Conversions Plugin', () => {
             );
         });
 
-        it('should register message and app_mention handlers', async () => {
+        it('should register message handlers for convert, question, and listener patterns', async () => {
             await conversionsPlugin(app);
             
-            expect(app.message).toHaveBeenCalledWith(expect.any(Function));
+            expect(app.message).toHaveBeenCalledTimes(3);
             expect(app.event).toHaveBeenCalledWith('app_mention', expect.any(Function));
         });
     });
 
-    describe('Temperature Conversions', () => {
-        let messageHandler: Function;
+    describe('Convert Command', () => {
+        let convertHandler: Function;
 
         beforeEach(async () => {
             await conversionsPlugin(app);
-            // Get the message handler from the first call to app.message
-            messageHandler = (app.message as jest.Mock).mock.calls[0][0];
+            // Get the convert command handler (first message handler)
+            convertHandler = (app.message as jest.Mock).mock.calls[0][1];
         });
 
-        it('should convert Fahrenheit to Celsius', async () => {
+        it('should convert Fahrenheit via convert command', async () => {
             const message = {
-                text: 'It\'s 75°F outside today',
+                text: 'convert 75°F',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '75°F = 23.9°C',
-                thread_ts: '1234567890.123456'
+                text: '*75°F* is *23.9°C* or *297°K*'
             });
         });
 
-        it('should convert Celsius to Fahrenheit', async () => {
+        it('should convert Celsius via convert command', async () => {
             const message = {
-                text: 'Set the oven to 180°C',
+                text: 'convert 100°C',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '180°C = 356°F',
-                thread_ts: '1234567890.123456'
+                text: '*100°C* is *212°F* or *373.1°K*'
             });
         });
 
-        it('should convert Kelvin to Celsius', async () => {
+        it('should convert Kelvin via convert command', async () => {
             const message = {
-                text: 'Absolute zero is 0 kelvin',
+                text: 'convert 0 kelvin',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '0°KELVIN = -273.1°C',
-                thread_ts: '1234567890.123456'
+                text: '*0°K* is *-459.7°F* or *-273.1°C*'
             });
-        });
-
-        it('should handle negative temperatures', async () => {
-            const message = {
-                text: 'It\'s -40°F outside',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await messageHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '-40°F = -40°C',
-                thread_ts: '1234567890.123456'
-            });
-        });
-
-        it('should handle decimal temperatures', async () => {
-            const message = {
-                text: 'Body temperature is 98.6 fahrenheit',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await messageHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '98.6°FAHRENHEIT = 37°C',
-                thread_ts: '1234567890.123456'
-            });
-        });
-    });
-
-    describe('Distance Conversions', () => {
-        let messageHandler: Function;
-
-        beforeEach(async () => {
-            await conversionsPlugin(app);
-            messageHandler = (app.message as jest.Mock).mock.calls[0][0];
         });
 
         it('should convert miles to kilometers', async () => {
             const message = {
-                text: 'I ran 5 miles this morning',
+                text: 'convert 5 miles',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '5 miles = 8 km',
-                thread_ts: '1234567890.123456'
+                text: '*5 miles* is *8 km*'
             });
         });
 
         it('should convert kilometers to miles', async () => {
             const message = {
-                text: 'Drive 10 km to get there',
+                text: 'convert 10 km',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '10 km = 6.2 miles',
-                thread_ts: '1234567890.123456'
+                text: '*10 km* is *6.2 miles*'
             });
         });
 
         it('should convert feet to meters', async () => {
             const message = {
-                text: 'The building is 200 feet tall',
+                text: 'convert 6 feet',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '200 feet = 61 m',
-                thread_ts: '1234567890.123456'
+                text: '*6 feet* is *1.8 m*'
             });
         });
 
-        it('should convert meters to feet', async () => {
+        it('should handle negative temperatures', async () => {
             const message = {
-                text: 'The table is 2 meters wide',
+                text: 'convert -40°F',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '2 meters = 6.6 feet',
-                thread_ts: '1234567890.123456'
+                text: '*-40°F* is *-40°C* or *233.1°K*'
             });
         });
 
-        it('should convert inches to centimeters', async () => {
+        it('should handle decimal values', async () => {
             const message = {
-                text: 'My phone is 6 inches long',
+                text: 'convert 98.6°F',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '6 inches = 15.2 cm',
-                thread_ts: '1234567890.123456'
+                text: '*98.6°F* is *37°C* or *310.1°K*'
             });
         });
 
-        it('should convert centimeters to inches', async () => {
+        it('should handle multiple conversions in one command', async () => {
             const message = {
-                text: 'Move it 5 centimeters to the left',
+                text: 'convert 75°F and 5 miles',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '5 centimeters = 2 inches',
-                thread_ts: '1234567890.123456'
+                text: '*75°F* is *23.9°C* or *297°K*\n*5 miles* is *8 km*'
             });
         });
 
-        it('should handle decimal distances', async () => {
+        it('should provide helpful error for invalid units', async () => {
             const message = {
-                text: 'I walked 2.5 miles today',
+                text: 'convert 100 invalid',
                 ts: '1234567890.123456',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '2.5 miles = 4 km',
-                thread_ts: '1234567890.123456'
+                text: 'No valid temperature or distance units found. Try something like: `convert 75°F` or `convert 5 miles`'
             });
-        });
-
-        it('should convert K to miles (K as kilometers)', async () => {
-            const message = {
-                text: 'Drive 5 K to get there',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await messageHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '5 K = 3.1 miles',
-                thread_ts: '1234567890.123456'
-            });
-        });
-    });
-
-    describe('Multiple Conversions', () => {
-        let messageHandler: Function;
-
-        beforeEach(async () => {
-            await conversionsPlugin(app);
-            messageHandler = (app.message as jest.Mock).mock.calls[0][0];
-        });
-
-        it('should handle multiple conversions in one message', async () => {
-            const message = {
-                text: 'It\'s 75°F and I walked 2.5 miles',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await messageHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '75°F = 23.9°C\n2.5 miles = 4 km',
-                thread_ts: '1234567890.123456'
-            });
-        });
-
-        it('should handle mixed temperature and distance units', async () => {
-            const message = {
-                text: 'Temperature: 22°C, Distance: 1.5 km, Height: 6 feet',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await messageHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '22°C = 71.6°F\n1.5 km = 0.9 miles\n6 feet = 1.8 m',
-                thread_ts: '1234567890.123456'
-            });
-        });
-    });
-
-    describe('Edge Cases', () => {
-        let messageHandler: Function;
-
-        beforeEach(async () => {
-            await conversionsPlugin(app);
-            messageHandler = (app.message as jest.Mock).mock.calls[0][0];
-        });
-
-        it('should not respond to messages without units', async () => {
-            const message = {
-                text: 'Hello world, how are you?',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await messageHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).not.toHaveBeenCalled();
         });
 
         it('should skip bot messages', async () => {
             const message = {
-                text: 'It\'s 75°F outside',
+                text: 'convert 75°F',
                 ts: '1234567890.123456',
                 user: 'U12345',
                 bot_id: 'B12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).not.toHaveBeenCalled();
         });
+    });
 
-        it('should handle threading correctly', async () => {
+    describe('Question Commands', () => {
+        let questionHandler: Function;
+
+        beforeEach(async () => {
+            await conversionsPlugin(app);
+            // Get the question handler (second message handler)
+            questionHandler = (app.message as jest.Mock).mock.calls[1][1];
+        });
+
+        it('should handle temperature questions', async () => {
             const message = {
-                text: 'It\'s 75°F outside',
+                text: 'what is 100°C in fahrenheit?',
                 ts: '1234567890.123456',
-                thread_ts: '1234567890.000000',
                 user: 'U12345'
             };
 
-            await messageHandler({ message, say: mockSay, client: mockClient });
+            await questionHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '75°F = 23.9°C',
-                thread_ts: '1234567890.000000'  // Should use existing thread_ts
+                text: '*100°C* is *212°F* or *373.1°K*'
+            });
+        });
+
+        it('should handle distance questions', async () => {
+            const message = {
+                text: 'what is 5 miles in km?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await questionHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 miles* is *8 km*'
+            });
+        });
+
+        it('should provide helpful error for invalid question', async () => {
+            const message = {
+                text: 'what is 100 invalid in other?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await questionHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: 'I couldn\'t find valid units to convert. Try something like: `what is 75°F in celsius?` or `what is 5 miles in km?`'
+            });
+        });
+    });
+
+    describe('Listener Pattern ([number][unit]?)', () => {
+        let listenerHandler: Function;
+
+        beforeEach(async () => {
+            await conversionsPlugin(app);
+            // Get the listener handler (third message handler)
+            listenerHandler = (app.message as jest.Mock).mock.calls[2][1];
+        });
+
+        it('should handle temperature lookup pattern', async () => {
+            const message = {
+                text: '75F?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await listenerHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*75°F* is *23.9°C* or *297°K*'
+            });
+        });
+
+        it('should handle temperature lookup with space', async () => {
+            const message = {
+                text: '25 C?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await listenerHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*25°C* is *77°F* or *298.1°K*'
+            });
+        });
+
+        it('should handle distance lookup pattern', async () => {
+            const message = {
+                text: '5km?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await listenerHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 km* is *3.1 miles*'
+            });
+        });
+
+        it('should handle decimal values in lookup', async () => {
+            const message = {
+                text: '98.6F?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await listenerHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*98.6°F* is *37°C* or *310.1°K*'
+            });
+        });
+
+        it('should handle negative temperatures in lookup', async () => {
+            const message = {
+                text: '-40C?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await listenerHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*-40°C* is *-40°F* or *233.1°K*'
+            });
+        });
+
+        it('should provide helpful error for invalid unit in lookup', async () => {
+            const message = {
+                text: '100X?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await listenerHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: 'I don\'t recognize "X" as a temperature or distance unit. Try units like F, C, miles, km, feet, etc.'
             });
         });
     });
@@ -383,9 +389,9 @@ describe('Conversions Plugin', () => {
             mentionHandler = (app.event as jest.Mock).mock.calls[0][1];
         });
 
-        it('should handle mentions with temperature conversions', async () => {
+        it('should handle convert commands via mention', async () => {
             const event = {
-                text: '<@U12345> what is 100°C in fahrenheit?',
+                text: '<@U12345> convert 100°C',
                 ts: '1234567890.123456',
                 user: 'U67890',
                 channel: 'C12345'
@@ -394,14 +400,13 @@ describe('Conversions Plugin', () => {
             await mentionHandler({ event, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '100°C = 212°F',
-                thread_ts: '1234567890.123456'
+                text: '*100°C* is *212°F* or *373.1°K*'
             });
         });
 
-        it('should handle mentions with distance conversions', async () => {
+        it('should handle question commands via mention', async () => {
             const event = {
-                text: '<@U12345> how many km is 5 miles?',
+                text: '<@U12345> what is 5 miles in km?',
                 ts: '1234567890.123456',
                 user: 'U67890',
                 channel: 'C12345'
@@ -410,8 +415,74 @@ describe('Conversions Plugin', () => {
             await mentionHandler({ event, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '5 miles = 8 km',
-                thread_ts: '1234567890.123456'
+                text: '*5 miles* is *8 km*'
+            });
+        });
+
+        it('should provide helpful error for invalid convert via mention', async () => {
+            const event = {
+                text: '<@U12345> convert 100 invalid',
+                ts: '1234567890.123456',
+                user: 'U67890',
+                channel: 'C12345'
+            };
+
+            await mentionHandler({ event, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: 'No valid temperature or distance units found. Try something like: `@bot convert 75°F` or `@bot convert 5 miles`'
+            });
+        });
+
+        it('should provide helpful error for invalid question via mention', async () => {
+            const event = {
+                text: '<@U12345> what is 100 invalid in other?',
+                ts: '1234567890.123456',
+                user: 'U67890',
+                channel: 'C12345'
+            };
+
+            await mentionHandler({ event, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: 'I couldn\'t find valid units to convert. Try something like: `@bot what is 75°F in celsius?` or `@bot what is 5 miles in km?`'
+            });
+        });
+    });
+
+    describe('Edge Cases', () => {
+        it('should show error for invalid convert command', async () => {
+            await conversionsPlugin(app);
+            const convertHandler = (app.message as jest.Mock).mock.calls[0][1];
+
+            const message = {
+                text: 'convert Hello world, how are you?',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: 'No valid temperature or distance units found. Try something like: `convert 75°F` or `convert 5 miles`'
+            });
+        });
+
+        it('should reply in main chat (no threading)', async () => {
+            await conversionsPlugin(app);
+            const convertHandler = (app.message as jest.Mock).mock.calls[0][1];
+
+            const message = {
+                text: 'convert 75°F',
+                ts: '1234567890.123456',
+                thread_ts: '1234567890.000000',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*75°F* is *23.9°C* or *297°K*'
             });
         });
     });
