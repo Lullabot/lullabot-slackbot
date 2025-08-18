@@ -55,7 +55,7 @@ describe('Conversions Plugin', () => {
         it('should register command patterns with pattern registry', async () => {
             await conversionsPlugin(app);
             
-            expect(patternRegistry.registerPattern).toHaveBeenCalledTimes(3);
+            expect(patternRegistry.registerPattern).toHaveBeenCalledTimes(2);
             expect(patternRegistry.registerPattern).toHaveBeenCalledWith(
                 expect.any(RegExp),
                 'conversions',
@@ -63,10 +63,10 @@ describe('Conversions Plugin', () => {
             );
         });
 
-        it('should register message handlers for convert, question, and listener patterns', async () => {
+        it('should register message handlers for convert and question patterns', async () => {
             await conversionsPlugin(app);
             
-            expect(app.message).toHaveBeenCalledTimes(3);
+            expect(app.message).toHaveBeenCalledTimes(2);
             expect(app.event).toHaveBeenCalledWith('app_mention', expect.any(Function));
         });
     });
@@ -286,99 +286,7 @@ describe('Conversions Plugin', () => {
         });
     });
 
-    describe('Listener Pattern ([number][unit]?)', () => {
-        let listenerHandler: Function;
 
-        beforeEach(async () => {
-            await conversionsPlugin(app);
-            // Get the listener handler (third message handler)
-            listenerHandler = (app.message as jest.Mock).mock.calls[2][1];
-        });
-
-        it('should handle temperature lookup pattern', async () => {
-            const message = {
-                text: '75F?',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await listenerHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '*75°F* is *23.9°C* or *297°K*'
-            });
-        });
-
-        it('should handle temperature lookup with space', async () => {
-            const message = {
-                text: '25 C?',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await listenerHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '*25°C* is *77°F* or *298.1°K*'
-            });
-        });
-
-        it('should handle distance lookup pattern', async () => {
-            const message = {
-                text: '5km?',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await listenerHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '*5 km* is *3.1 miles*'
-            });
-        });
-
-        it('should handle decimal values in lookup', async () => {
-            const message = {
-                text: '98.6F?',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await listenerHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '*98.6°F* is *37°C* or *310.1°K*'
-            });
-        });
-
-        it('should handle negative temperatures in lookup', async () => {
-            const message = {
-                text: '-40C?',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await listenerHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: '*-40°C* is *-40°F* or *233.1°K*'
-            });
-        });
-
-        it('should provide helpful error for invalid unit in lookup', async () => {
-            const message = {
-                text: '100X?',
-                ts: '1234567890.123456',
-                user: 'U12345'
-            };
-
-            await listenerHandler({ message, say: mockSay, client: mockClient });
-
-            expect(mockSay).toHaveBeenCalledWith({
-                text: 'I don\'t recognize "X" as a temperature or distance unit. Try units like F, C, miles, km, feet, etc.'
-            });
-        });
-    });
 
     describe('App Mentions', () => {
         let mentionHandler: Function;

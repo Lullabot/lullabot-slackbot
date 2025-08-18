@@ -140,7 +140,6 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
     // Register command patterns with the registry
     patternRegistry.registerPattern(/^convert\s+(.+)$/i, 'conversions', 1);
     patternRegistry.registerPattern(/^what\s+is\s+(.+)\s+in\s+(.+)\?$/i, 'conversions', 1);
-    patternRegistry.registerPattern(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)\?$/, 'conversions', 1);
 
     // Function to process conversions in a message
     function processConversions(text: string): string[] {
@@ -246,37 +245,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         }
     });
 
-    // Handle single listener pattern: [number][unit]? (e.g., "34F?", "25 C?", "-40C?")
-    app.message(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)\?$/, async ({ message, say, client }) => {
-        const msg = message as GenericMessageEvent;
-        
-        // Skip bot messages to avoid loops
-        if (msg.bot_id) return;
-        
-        // Construct the unit string from the pattern match
-        const match = msg.text?.match(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)\?$/);
-        if (match) {
-            const unitString = `${match[1]}${match[2]}`;
-            const conversions = processConversions(unitString);
-            
-            if (conversions.length > 0) {
-                try {
-                    await say({
-                        text: conversions.join('\n')
-                    });
-                    
-                    logger.info(`Converted ${conversions.length} units via listener pattern from user ${msg.user}`);
-                } catch (error) {
-                    logger.error({ error }, 'Error sending conversion response');
-                }
-            } else {
-                // Unit not recognized
-                await say({
-                    text: `I don't recognize "${match[2]}" as a temperature or distance unit. Try units like F, C, miles, km, feet, etc.`
-                });
-            }
-        }
-    });
+
 
     // Handle app mentions with convert commands
     app.event('app_mention', async ({ event, say, client }) => {
