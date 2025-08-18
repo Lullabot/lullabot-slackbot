@@ -117,11 +117,25 @@ function formatNumber(num: number): string {
     return parseFloat(num.toFixed(1)).toString();
 }
 
+// Helper function to get proper temperature unit abbreviations
+function getTemperatureUnitAbbreviation(unit: string): string {
+    const u = unit.toLowerCase();
+    if (u.charAt(0) === 'f') {
+        return 'F';
+    } else if (u.charAt(0) === 'c') {
+        return 'C';
+    } else if (u === 'kelvin') {
+        return 'K';
+    } else {
+        return unit.toUpperCase();
+    }
+}
+
 const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
     // Define patterns for temperature and distance detection
     // Note: 'K' alone is treated as kilometers, 'kelvin' is treated as temperature
     const temperaturePattern = /(-?\d+(?:\.\d+)?)\s*°?\s*(f|fahrenheit|c|celsius|kelvin)\b/gi;
-    const distancePattern = /(\d+(?:\.\d+)?)\s*(miles?|mi|feet|ft|inches?|in|kilometers?|km|k(?!elvin)|meters?|m|centimeters?|cm)\b/gi;
+    const distancePattern = /(\d+(?:\.\d+)?)\s*(miles?|mi|feet|ft|inches?|in|kilometers?|km|k\b|meters?|m|centimeters?|cm)\b/gi;
     
     // Register patterns with the registry (low priority since we want to detect, not command)
     patternRegistry.registerPattern(temperaturePattern, 'conversions', 1);
@@ -140,7 +154,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                 const toUnit = getOppositeTemperatureUnit(fromUnit);
                 const converted = convertTemperature(value, fromUnit, toUnit);
                 
-                conversions.push(`${match[1]}°${fromUnit.toUpperCase()} = ${formatNumber(converted)}°${toUnit}`);
+                conversions.push(`${match[1]}°${getTemperatureUnitAbbreviation(fromUnit)} = ${formatNumber(converted)}°${getTemperatureUnitAbbreviation(toUnit)}`);
             } catch (error) {
                 console.error('Temperature conversion error:', error);
             }
@@ -174,7 +188,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         if (msg.bot_id) return;
         
         // Skip messages that are commands to other plugins
-        if (msg.text && patternRegistry.matchesAnyPattern(msg.text.replace(/\s*\d+.*/, ''))) {
+        if (msg.text && patternRegistry.matchesAnyPattern(msg.text)) {
             return;
         }
         

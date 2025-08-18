@@ -7,5 +7,6 @@
       "Bash(gh issue view:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": false
 }

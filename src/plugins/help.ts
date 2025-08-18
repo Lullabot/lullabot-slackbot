@@ -77,7 +77,7 @@ const helpText: HelpText = {
             { pattern: '0 kelvin', description: 'Converts to Celsius (-273.1°C)' },
             { pattern: '5 miles', description: 'Converts to kilometers (8 km)' },
             { pattern: '10 km', description: 'Converts to miles (6.2 miles)' },
-            { pattern: '5 K', description: 'Converts kilometers (K) to miles (3.1 miles)' },
+            { pattern: '5 K', description: 'Converts 5 kilometers to miles (3.1 miles)' },
             { pattern: '6 feet', description: 'Converts to meters (1.8 m)' },
             { pattern: '2 meters', description: 'Converts to feet (6.6 feet)' }
         ]
