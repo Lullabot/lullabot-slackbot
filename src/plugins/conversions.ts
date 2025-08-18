@@ -168,7 +168,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                 
                 conversions.push(`*${match[1]}°${getTemperatureUnitAbbreviation(fromUnit)}* is ${otherUnits.join(' or ')}`);
             } catch (error) {
-                console.error('Temperature conversion error:', error);
+                logger.error({ error }, 'Temperature conversion error');
             }
         }
         
@@ -185,7 +185,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                     conversions.push(`*${match[1]} ${fromUnit}* is *${formatNumber(converted)} ${toUnit}*`);
                 }
             } catch (error) {
-                console.error('Distance conversion error:', error);
+                logger.error({ error }, 'Distance conversion error');
             }
         }
         
@@ -209,7 +209,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                 
                 logger.info(`Converted ${conversions.length} units via convert command from user ${msg.user}`);
             } catch (error) {
-                console.error('Error sending conversion response:', error);
+                logger.error({ error }, 'Error sending conversion response');
             }
         } else {
             // No valid conversions found in the command
@@ -236,7 +236,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                 
                 logger.info(`Converted ${conversions.length} units via question command from user ${msg.user}`);
             } catch (error) {
-                console.error('Error sending conversion response:', error);
+                logger.error({ error }, 'Error sending conversion response');
             }
         } else {
             // No valid conversions found in the question
@@ -267,7 +267,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                     
                     logger.info(`Converted ${conversions.length} units via listener pattern from user ${msg.user}`);
                 } catch (error) {
-                    console.error('Error sending conversion response:', error);
+                    logger.error({ error }, 'Error sending conversion response');
                 }
             } else {
                 // Unit not recognized
@@ -300,7 +300,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                     
                     logger.info(`Converted ${conversions.length} units via @bot convert command from user ${mention.user}`);
                 } catch (error) {
-                    console.error('Error sending conversion response:', error);
+                    logger.error({ error }, 'Error sending conversion response');
                 }
             } else {
                 // No valid conversions found in the command
@@ -319,7 +319,7 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                     
                     logger.info(`Converted ${conversions.length} units via @bot question command from user ${mention.user}`);
                 } catch (error) {
-                    console.error('Error sending conversion response:', error);
+                    logger.error({ error }, 'Error sending conversion response');
                 }
             } else {
                 // No valid conversions found in the question
