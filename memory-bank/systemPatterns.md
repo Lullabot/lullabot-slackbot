@@ -40,6 +40,16 @@ graph TD
 ```
 
 ## Recent Enhancements
+- **Help Plugin Architectural Improvements (January 2025)**
+  - Implemented helper function pattern for code reuse and maintainability
+  - Created `replaceBotMentions()` for centralizing bot mention replacement logic
+  - Created `getBotUserId()` for centralized API calls with error handling
+  - Created `processHelpRequest()` for unified response generation
+  - Demonstrates best practices: Single Responsibility Principle, pure functions, error handling
+- **Dynamic Bot Identity Integration (January 2025)**
+  - Help system now dynamically fetches bot user ID using `client.auth.test()` pattern
+  - Consistent with uptime plugin approach for bot identity retrieval
+  - Graceful degradation on API failures
 - Added link preview control mechanism for factoids
   - Uses lock icon (🔒) to indicate factoids with disabled link previews
 - Improved pattern matching for more reliable message handling

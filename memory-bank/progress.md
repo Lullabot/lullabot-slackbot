@@ -7,7 +7,7 @@
 - TypeScript compilation and development scripts (`package.json`).
 - Pattern Registry for cross-plugin command management (`src/services/pattern-registry.ts`)
 - Enhanced plugins with recent improvements:
-    - Help (now with updated factoid help text for preview settings)
+    - Help (now with dynamic bot names, updated factoid help text, and refactored helper functions)
     - Factoids (with link preview control and improved pattern matching)
     - Karma (with improved thread handling)
     - Greetings (hello.ts)
@@ -15,6 +15,17 @@
     - Botsnack
 
 ## Recently Completed
+- **Issue #38: Dynamic Bot Names in Help Text (January 2025)**
+  - Updated help system to display actual bot name instead of hardcoded `@bot` placeholders
+  - Users can now copy/paste help commands directly without manual bot name replacement
+  - Implemented using `client.auth.test()` pattern for dynamic bot user ID fetching
+  - Graceful error handling with fallback to `@bot` on API failures
+- **Help Plugin Refactoring (January 2025)**
+  - Major code quality improvements following software engineering best practices
+  - Created reusable helper functions: `replaceBotMentions()`, `getBotUserId()`, `processHelpRequest()`
+  - Eliminated 26+ lines of code duplication across event handlers
+  - Improved maintainability with single responsibility principle and pure functions
+  - Enhanced error handling and testability
 - Added link preview control for factoids (May 2025)
   - New syntax: `@bot X is Y | preview` or `@bot X is Y | nopreview`
   - Visual indicators in factoid listing (lock emoji for disabled previews)

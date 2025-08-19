@@ -216,7 +216,7 @@ describe('Conversions Plugin', () => {
             await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: 'No valid temperature or distance units found. Try something like: `convert 75°F` or `convert 5 miles`'
+                text: 'No valid temperature or distance units found. Try something like: `convert 75°F`, `convert 5 miles`, or `convert 5k to inches`'
             });
         });
 
@@ -231,6 +231,106 @@ describe('Conversions Plugin', () => {
             await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).not.toHaveBeenCalled();
+        });
+
+        // New tests for "convert X to Y" functionality
+        it('should convert kilometers to inches when explicitly requested', async () => {
+            const message = {
+                text: 'convert 5k to in',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 k* is *196850.4 in*'
+            });
+        });
+
+        it('should convert kilometers to inches with full unit names', async () => {
+            const message = {
+                text: 'convert 5 kilometers to inches',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 kilometers* is *196850.4 inches*'
+            });
+        });
+
+        it('should convert Celsius to Fahrenheit when explicitly requested', async () => {
+            const message = {
+                text: 'convert 100°C to fahrenheit',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*100°C* is *212°F*'
+            });
+        });
+
+        it('should convert feet to centimeters when explicitly requested', async () => {
+            const message = {
+                text: 'convert 6 feet to cm',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*6 feet* is *182.9 cm*'
+            });
+        });
+
+        it('should handle case-insensitive target units', async () => {
+            const message = {
+                text: 'convert 5k to IN',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 k* is *196850.4 IN*'
+            });
+        });
+
+        it('should maintain backward compatibility for convert without target', async () => {
+            const message = {
+                text: 'convert 5k',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 k* is *3.1 miles*'
+            });
+        });
+
+        it('should handle invalid target units gracefully', async () => {
+            const message = {
+                text: 'convert 5k to invalidunit',
+                ts: '1234567890.123456',
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            // Should fall back to default behavior when target unit is invalid
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 k* is *3.1 miles*'
+            });
         });
     });
 
@@ -253,7 +353,7 @@ describe('Conversions Plugin', () => {
             await questionHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: '*100°C* is *212°F* or *373.1°K*'
+                text: '*100°C* is *212°F*'
             });
         });
 
@@ -338,7 +438,7 @@ describe('Conversions Plugin', () => {
             await mentionHandler({ event, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: 'No valid temperature or distance units found. Try something like: `@bot convert 75°F` or `@bot convert 5 miles`'
+                text: 'No valid temperature or distance units found. Try something like: `@bot convert 75°F`, `@bot convert 5 miles`, or `@bot convert 5k to inches`'
             });
         });
 
@@ -354,6 +454,52 @@ describe('Conversions Plugin', () => {
 
             expect(mockSay).toHaveBeenCalledWith({
                 text: 'I couldn\'t find valid units to convert. Try something like: `@bot what is 75°F in celsius?` or `@bot what is 5 miles in km?`'
+            });
+        });
+
+        // New tests for "@bot convert X to Y" functionality  
+        it('should handle convert X to Y commands via mention', async () => {
+            const event = {
+                text: '<@U12345> convert 5k to in',
+                ts: '1234567890.123456',
+                user: 'U67890',
+                channel: 'C12345'
+            };
+
+            await mentionHandler({ event, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 k* is *196850.4 in*'
+            });
+        });
+
+        it('should handle temperature convert X to Y via mention', async () => {
+            const event = {
+                text: '<@U12345> convert 100°C to fahrenheit',
+                ts: '1234567890.123456',
+                user: 'U67890',
+                channel: 'C12345'
+            };
+
+            await mentionHandler({ event, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*100°C* is *212°F*'
+            });
+        });
+
+        it('should maintain backward compatibility for @bot convert without target', async () => {
+            const event = {
+                text: '<@U12345> convert 5k',
+                ts: '1234567890.123456',
+                user: 'U67890',
+                channel: 'C12345'
+            };
+
+            await mentionHandler({ event, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: '*5 k* is *3.1 miles*'
             });
         });
     });
@@ -372,7 +518,7 @@ describe('Conversions Plugin', () => {
             await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
-                text: 'No valid temperature or distance units found. Try something like: `convert 75°F` or `convert 5 miles`'
+                text: 'No valid temperature or distance units found. Try something like: `convert 75°F`, `convert 5 miles`, or `convert 5k to inches`'
             });
         });
 

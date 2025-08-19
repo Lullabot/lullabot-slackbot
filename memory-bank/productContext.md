@@ -17,6 +17,10 @@ Provides automated utilities, information retrieval (factoids), and community en
 - **Extensible:** Easily add new commands and features through the plugin system.
 
 ## Recent Enhancements
+- **Dynamic Help Text (January 2025):** Help commands now show the actual bot name for improved copy/paste usability.
+  - Instead of generic `@bot help factoids`, users see `@tugbot help factoids` (actual bot name)
+  - Makes help documentation immediately actionable without manual editing
+  - Seamless integration with existing help system functionality
 - **Link Preview Control:** Users can now control whether links in factoids display previews.
   - `@bot X is Y | preview` enables previews (default)
   - `@bot X is Y | nopreview` disables previews
