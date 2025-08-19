@@ -67,6 +67,18 @@ const helpText: HelpText = {
         commands: [
             { pattern: '@bot add-prompt <permalink>', description: 'Add a Slack message as a prompt using its permalink' }
         ]
+    },
+    conversions: {
+        title: 'Unit Conversions',
+        description: 'Converts between imperial and metric units using explicit commands or questions',
+        commands: [
+            { pattern: 'convert 75°F', description: 'Explicit command: "*75°F* is *23.9°C* or *297°K*"' },
+            { pattern: '@bot convert 100°C', description: 'Bot mention: "*100°C* is *212°F* or *373.1°K*"' },
+            { pattern: 'what is 32°F in celsius?', description: 'Question format: "*32°F* is *0°C* or *273.1°K*"' },
+            { pattern: '@bot what is 5 miles in km?', description: 'Bot question: "*5 miles* is *8 km*"' },
+            { pattern: 'convert 10 km', description: 'Distance conversion: "*10 km* is *6.2 miles*"' },
+            { pattern: 'convert 6 feet', description: 'Imperial to metric: "*6 feet* is *1.8 m*"' }
+        ]
     }
 };
 
