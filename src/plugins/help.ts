@@ -1,8 +1,17 @@
 import { App } from '@slack/bolt';
+import { WebClient } from '@slack/web-api';
 import { GenericMessageEvent } from '@slack/types/dist/events/message';
 import { AppMentionEvent } from '@slack/types/dist/events/app';
 import { Plugin, HelpText } from '../types';
 import patternRegistry from '../services/pattern-registry';
+
+// Cache for bot user ID to avoid repeated API calls
+let cachedBotUserId: string | undefined = undefined;
+
+// Export for testing purposes
+export const __testResetCache = () => {
+    cachedBotUserId = undefined;
+};
 
 const helpText: HelpText = {
     botsnack: {
@@ -82,18 +91,68 @@ const helpText: HelpText = {
     }
 };
 
-function formatPluginHelp(plugin: string): string | null {
+/**
+ * Helper function to get the bot's user ID from Slack client with caching
+ * @param client - The Slack client instance
+ * @returns Promise resolving to the bot's user ID (cached after first successful call)
+ */
+async function getBotUserId(client: WebClient): Promise<string | undefined> {
+    // Return cached value if already fetched
+    if (cachedBotUserId !== undefined) {
+        return cachedBotUserId;
+    }
+    
+    try {
+        const botInfo = await client.auth.test();
+        cachedBotUserId = botInfo.user_id; // Cache the result
+        return cachedBotUserId;
+    } catch (error) {
+        console.error('Failed to get bot user ID:', error);
+        return undefined;
+    }
+}
+
+/**
+ * Helper function to process help requests and generate appropriate responses
+ * @param specificPlugin - The specific plugin requested (if any)
+ * @param botUserId - The bot's user ID for dynamic mentions
+ * @returns The formatted help response string
+ */
+function processHelpRequest(specificPlugin: string | undefined, botUserId: string | undefined): string {
+    if (specificPlugin) {
+        const pluginHelp = formatPluginHelp(specificPlugin, botUserId);
+        return pluginHelp || `Plugin "${specificPlugin}" not found. Try one of: ${Object.keys(helpText).join(', ')}`;
+    } else {
+        return formatFullHelp(botUserId);
+    }
+}
+
+/**
+ * Helper function to replace @bot mentions with actual bot user mentions
+ * @param pattern - The pattern string that may contain @bot
+ * @param botUserId - The bot's user ID to replace @bot with
+ * @returns The pattern with @bot replaced by <@botUserId> or original pattern if no botUserId
+ */
+function replaceBotMentions(pattern: string, botUserId?: string): string {
+    if (botUserId && pattern.includes('@bot')) {
+        return pattern.replace(/@bot/g, `<@${botUserId}>`);
+    }
+    return pattern;
+}
+
+function formatPluginHelp(plugin: string, botUserId?: string): string | null {
     const help = helpText[plugin];
     if (!help) return null;
 
     let response = `*${help.title}*\n${help.description}\n\n*Commands:*\n`;
     help.commands.forEach(cmd => {
-        response += `• \`${cmd.pattern}\` - ${cmd.description}\n`;
+        const pattern = replaceBotMentions(cmd.pattern, botUserId);
+        response += `• \`${pattern}\` - ${cmd.description}\n`;
     });
     return response;
 }
 
-function formatFullHelp(): string {
+function formatFullHelp(botUserId?: string): string {
     let response = '*Available Plugins:*\n\n';
     
     Object.keys(helpText).forEach(plugin => {
@@ -101,12 +160,14 @@ function formatFullHelp(): string {
         response += `*${help.title}*\n${help.description}\n`;
         response += '_Key commands:_\n';
         help.commands.slice(0, 2).forEach(cmd => {
-            response += `• \`${cmd.pattern}\` - ${cmd.description}\n`;
+            const pattern = replaceBotMentions(cmd.pattern, botUserId);
+            response += `• \`${pattern}\` - ${cmd.description}\n`;
         });
         response += '\n';
     });
     
-    response += '\nFor detailed help on a specific plugin, try `@bot help <plugin>` (e.g., `@bot help karma`)';
+    const botMention = botUserId ? `<@${botUserId}>` : '@bot';
+    response += `\nFor detailed help on a specific plugin, try \`${botMention} help <plugin>\` (e.g., \`${botMention} help karma\`)`;
     return response;
 }
 
@@ -127,21 +188,16 @@ const helpPlugin: Plugin = async (app: App): Promise<void> => {
     patternRegistry.registerPattern(/^where$/i, 'common-words', 5);
     patternRegistry.registerPattern(/^why$/i, 'common-words', 5);
     
-    app.event('app_mention', async ({ event, say }) => {
+    app.event('app_mention', async ({ event, say, client }) => {
         const mention = event as AppMentionEvent;
         const text = mention.text.replace(/<@[^>]+>\s*/, '').trim();
         const matches = text.match(helpRegex);
 
         if (matches) {
+            // Get bot's user ID for dynamic help text
+            const botUserId = await getBotUserId(client);
             const specificPlugin = matches[1]?.toLowerCase();
-            let response: string;
-
-            if (specificPlugin) {
-                const pluginHelp = formatPluginHelp(specificPlugin);
-                response = pluginHelp || `Plugin "${specificPlugin}" not found. Try one of: ${Object.keys(helpText).join(', ')}`;
-            } else {
-                response = formatFullHelp();
-            }
+            const response = processHelpRequest(specificPlugin, botUserId);
 
             await say({
                 text: response,
@@ -151,20 +207,15 @@ const helpPlugin: Plugin = async (app: App): Promise<void> => {
     });
 
     // Also handle direct message help requests
-    app.message(helpRegex, async ({ message, say }) => {
+    app.message(helpRegex, async ({ message, say, client }) => {
         const msg = message as GenericMessageEvent;
         if (!msg.text) return;
         
+        // Get bot's user ID for dynamic help text
+        const botUserId = await getBotUserId(client);
         const matches = msg.text.match(helpRegex);
         const specificPlugin = matches?.[1]?.toLowerCase();
-        let response: string;
-
-        if (specificPlugin) {
-            const pluginHelp = formatPluginHelp(specificPlugin);
-            response = pluginHelp || `Plugin "${specificPlugin}" not found. Try one of: ${Object.keys(helpText).join(', ')}`;
-        } else {
-            response = formatFullHelp();
-        }
+        const response = processHelpRequest(specificPlugin, botUserId);
 
         await say({
             text: response,

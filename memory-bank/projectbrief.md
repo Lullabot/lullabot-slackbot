@@ -5,7 +5,7 @@ To provide a modular and extensible Slack bot for the Lullabot workspace, offeri
 
 ## Key Features (from README)
 - **Modular Plugin Architecture:** Allows easy addition of new features.
-- **Help System:** Provides documentation for bot commands.
+- **Help System:** Provides documentation for bot commands with dynamic bot name support and performance caching.
 - **Factoids:** Stores and retrieves custom responses (like FAQs).
 - **Karma System:** Tracks points for users and items.
 - **Unit Conversions:** Temperature and distance conversions with explicit target unit support.
@@ -13,11 +13,11 @@ To provide a modular and extensible Slack bot for the Lullabot workspace, offeri
 - **Uptime/Identity:** Reports bot status.
 - **Botsnack:** A fun interaction command.
 
-## Target Environment
-- Lullabot Slack Workspace 
-
 ## Development Principles
 - **Code Quality:** Emphasis on helper functions, DRY principle, and comprehensive testing
 - **User Experience:** Thread-aware responses and intelligent command interpretation
 - **Maintainability:** Consistent patterns across plugins with centralized logic
 - **Extensibility:** Well-documented patterns for adding new functionality
+
+## Target Environment
+- Lullabot Slack Workspace 

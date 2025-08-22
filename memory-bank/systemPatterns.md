@@ -40,6 +40,11 @@ graph TD
 ```
 
 ## Recent Enhancements
+- **Help Plugin Performance & Type Safety Improvements (August 2025)**
+  - Implemented module-level caching for bot user ID fetching to eliminate repeated API calls
+  - Fixed type safety by replacing `any` type with proper `WebClient` type from Slack SDK
+  - Added comprehensive test coverage (5 tests) including caching behavior verification
+  - Enhanced error handling with graceful fallbacks and proper TypeScript support
 - **Conversions Plugin Architectural Patterns (August 2025)**
   - Established comprehensive helper function pattern for complex plugins
   - Created `handleConvertCommand()` for centralized conversion logic with explicit target unit support
@@ -61,6 +66,8 @@ graph TD
   - Consistent with uptime plugin approach for bot identity retrieval
   - Graceful degradation on API failures
 - **Code Quality Patterns Established**
+  - Type safety enforcement with proper TypeScript types instead of `any`
+  - Performance optimization through intelligent caching strategies
   - Helper function extraction for eliminating code duplication
   - Pure function design for better testability
   - Centralized error handling with graceful degradation
