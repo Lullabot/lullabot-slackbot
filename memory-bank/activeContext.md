@@ -15,7 +15,6 @@ Recently completed Issue #117 (unit conversion specific unit requests) with comp
   - `what is 5k in inches?` now returns only inches as requested instead of multiple units
   - Fixed app mention handler's questionMatch section to properly use explicit target units (Copilot issue)
   - Added proper thread handling so conversion responses appear in the correct thread context
->>>>>>> @{-1}
 - **Issue #117 Completed (August 2025):** Fixed unit conversions to respect specific target unit requests
   - `convert 5k to in` now correctly returns inches (196,850.4 in) instead of miles
   - `what is 5k in inches?` now returns only inches as requested instead of multiple units
