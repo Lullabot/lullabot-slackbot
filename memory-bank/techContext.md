@@ -29,8 +29,11 @@
 ## Testing
 - Jest is configured for TypeScript testing
 - Test files are located in `src/plugins/__tests__/`
-- Recent focus on expanding test coverage for factoids plugin
-- Tests verify pattern matching, command handling, and response formatting
+- **Help Plugin**: 5 comprehensive tests covering plugin registration, caching behavior, and error handling
+- **Conversions Plugin**: 33 comprehensive tests covering all functionality including threading
+- **Factoids Plugin**: Comprehensive test coverage for pattern matching and functionality
+- Tests verify pattern matching, command handling, response formatting, caching behavior, and thread handling
+- Focus on test-driven development and regression prevention
 
 ## Build/Deployment
 - TypeScript is compiled to JavaScript in the `dist/` directory via `npm run build`
