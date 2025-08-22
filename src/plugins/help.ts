@@ -1,8 +1,12 @@
 import { App } from '@slack/bolt';
+import { WebClient } from '@slack/web-api';
 import { GenericMessageEvent } from '@slack/types/dist/events/message';
 import { AppMentionEvent } from '@slack/types/dist/events/app';
 import { Plugin, HelpText } from '../types';
 import patternRegistry from '../services/pattern-registry';
+
+// Cache for bot user ID to avoid repeated API calls
+let cachedBotUserId: string | undefined = undefined;
 
 const helpText: HelpText = {
     botsnack: {
@@ -83,14 +87,20 @@ const helpText: HelpText = {
 };
 
 /**
- * Helper function to get the bot's user ID from Slack client
+ * Helper function to get the bot's user ID from Slack client with caching
  * @param client - The Slack client instance
- * @returns Promise resolving to the bot's user ID
+ * @returns Promise resolving to the bot's user ID (cached after first successful call)
  */
-async function getBotUserId(client: any): Promise<string | undefined> {
+async function getBotUserId(client: WebClient): Promise<string | undefined> {
+    // Return cached value if already fetched
+    if (cachedBotUserId !== undefined) {
+        return cachedBotUserId;
+    }
+    
     try {
         const botInfo = await client.auth.test();
-        return botInfo.user_id;
+        cachedBotUserId = botInfo.user_id; // Cache the result
+        return cachedBotUserId;
     } catch (error) {
         console.error('Failed to get bot user ID:', error);
         return undefined;
