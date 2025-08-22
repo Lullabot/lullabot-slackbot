@@ -1,11 +1,21 @@
 import { App } from '@slack/bolt';
-import helpPlugin from '../help';
+import helpPlugin, { __testResetCache } from '../help';
 import patternRegistry from '../../services/pattern-registry';
 
 // Mock dependencies
 jest.mock('../../services/pattern-registry', () => ({
     registerPattern: jest.fn()
 }));
+
+// Mock console methods to avoid noise in tests
+const originalConsoleError = console.error;
+beforeAll(() => {
+    console.error = jest.fn();
+});
+
+afterAll(() => {
+    console.error = originalConsoleError;
+});
 
 describe('Help Plugin', () => {
     let app: App;
@@ -15,7 +25,10 @@ describe('Help Plugin', () => {
     beforeEach(() => {
         // Reset all mocks
         jest.clearAllMocks();
-        
+
+        // Reset cache for test isolation
+        __testResetCache();
+
         mockSay = jest.fn();
         mockClient = {
             auth: {
@@ -28,9 +41,6 @@ describe('Help Plugin', () => {
             event: jest.fn(),
             message: jest.fn()
         } as any;
-
-        // Note: Cache state persists between tests in the same file
-        // This is actually realistic since the bot would maintain cache across requests
     });
 
     describe('Plugin Registration', () => {
@@ -124,28 +134,182 @@ describe('Help Plugin', () => {
         });
 
         it('should return cached value on subsequent calls without API call', async () => {
-            // At this point, cache should be populated from previous test
+            // First, populate the cache by making a successful API call
+            mockClient.auth.test.mockResolvedValueOnce({ user_id: 'U123456' });
+
             const mockEvent = {
                 text: '<@U123456> help',
                 thread_ts: undefined,
                 ts: '1234567890.123456'
             };
 
-            // This call should use cached value
-            await appMentionHandler({ 
-                event: mockEvent, 
-                say: mockSay, 
-                client: mockClient 
+            // First call to populate cache
+            await appMentionHandler({
+                event: mockEvent,
+                say: mockSay,
+                client: mockClient
             });
 
-            // Verify API was NOT called (cached value used)
+            // Reset the mock to ensure we can verify no additional API calls
+            mockClient.auth.test.mockClear();
+
+            // Second call should use cached value
+            await appMentionHandler({
+                event: mockEvent,
+                say: mockSay,
+                client: mockClient
+            });
+
+            // Verify API was NOT called on the second call (cached value used)
             expect(mockClient.auth.test).not.toHaveBeenCalled();
-            expect(mockSay).toHaveBeenCalledWith({
+            expect(mockSay).toHaveBeenLastCalledWith({
                 text: expect.stringContaining('<@U123456>'),
                 thread_ts: '1234567890.123456'
             });
         });
     });
 
-    // TODO: Add event handler tests
+    describe('Message Handler', () => {
+        let messageHandler: Function;
+
+        beforeEach(async () => {
+            await helpPlugin(app);
+
+            // Extract the registered message handler for testing
+            const messageCall = (app.message as jest.Mock).mock.calls.find(call => call[1]);
+            messageHandler = messageCall[1];
+        });
+
+        it('should handle direct help messages', async () => {
+            // Mock successful API response
+            mockClient.auth.test.mockResolvedValueOnce({ user_id: 'U123456' });
+
+            const mockMessage = {
+                text: 'help karma',
+                thread_ts: undefined,
+                ts: '1234567890.123456'
+            };
+
+            await messageHandler({
+                message: mockMessage,
+                say: mockSay,
+                client: mockClient
+            });
+
+            expect(mockClient.auth.test).toHaveBeenCalledTimes(1);
+            expect(mockSay).toHaveBeenCalledWith({
+                text: expect.stringContaining('Karma System'),
+                thread_ts: '1234567890.123456'
+            });
+        });
+
+        it('should handle direct help commands without specific plugin', async () => {
+            // Mock successful API response
+            mockClient.auth.test.mockResolvedValueOnce({ user_id: 'U123456' });
+
+            const mockMessage = {
+                text: 'help',
+                thread_ts: undefined,
+                ts: '1234567890.123456'
+            };
+
+            await messageHandler({
+                message: mockMessage,
+                say: mockSay,
+                client: mockClient
+            });
+
+            expect(mockClient.auth.test).toHaveBeenCalledTimes(1);
+            expect(mockSay).toHaveBeenCalledWith({
+                text: expect.stringContaining('Available Plugins'),
+                thread_ts: '1234567890.123456'
+            });
+        });
+
+        it('should handle direct help commands with thread context', async () => {
+            // Mock successful API response
+            mockClient.auth.test.mockResolvedValueOnce({ user_id: 'U123456' });
+
+            const mockMessage = {
+                text: 'help',
+                thread_ts: '1234567890.000000',
+                ts: '1234567890.123456'
+            };
+
+            await messageHandler({
+                message: mockMessage,
+                say: mockSay,
+                client: mockClient
+            });
+
+            expect(mockSay).toHaveBeenCalledWith({
+                text: expect.stringContaining('Available Plugins'),
+                thread_ts: '1234567890.000000' // Should use thread_ts, not ts
+            });
+        });
+
+        it('should handle messages without text gracefully', async () => {
+            const mockMessage = {
+                thread_ts: undefined,
+                ts: '1234567890.123456'
+                // No text property
+            };
+
+            await messageHandler({
+                message: mockMessage,
+                say: mockSay,
+                client: mockClient
+            });
+
+            // Should not call say for messages without text
+            expect(mockSay).not.toHaveBeenCalled();
+            expect(mockClient.auth.test).not.toHaveBeenCalled();
+        });
+
+        it('should handle help commands with invalid plugin names', async () => {
+            // Mock successful API response
+            mockClient.auth.test.mockResolvedValueOnce({ user_id: 'U123456' });
+
+            const mockMessage = {
+                text: 'help nonexistentplugin',
+                thread_ts: undefined,
+                ts: '1234567890.123456'
+            };
+
+            await messageHandler({
+                message: mockMessage,
+                say: mockSay,
+                client: mockClient
+            });
+
+            expect(mockClient.auth.test).toHaveBeenCalledTimes(1);
+            expect(mockSay).toHaveBeenCalledWith({
+                text: expect.stringContaining('Plugin "nonexistentplugin" not found'),
+                thread_ts: '1234567890.123456'
+            });
+        });
+
+        it('should handle API errors gracefully with fallback to @bot mentions', async () => {
+            // Mock API error
+            mockClient.auth.test.mockRejectedValueOnce(new Error('API Error'));
+
+            const mockMessage = {
+                text: 'help',
+                thread_ts: undefined,
+                ts: '1234567890.123456'
+            };
+
+            await messageHandler({
+                message: mockMessage,
+                say: mockSay,
+                client: mockClient
+            });
+
+            expect(mockClient.auth.test).toHaveBeenCalledTimes(1);
+            expect(mockSay).toHaveBeenCalledWith({
+                text: expect.stringContaining('@bot help <plugin>'), // Should fallback to @bot
+                thread_ts: '1234567890.123456'
+            });
+        });
+    });
 });

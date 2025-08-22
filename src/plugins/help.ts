@@ -8,6 +8,11 @@ import patternRegistry from '../services/pattern-registry';
 // Cache for bot user ID to avoid repeated API calls
 let cachedBotUserId: string | undefined = undefined;
 
+// Export for testing purposes
+export const __testResetCache = () => {
+    cachedBotUserId = undefined;
+};
+
 const helpText: HelpText = {
     botsnack: {
         title: 'Botsnack',
@@ -161,7 +166,7 @@ function formatFullHelp(botUserId?: string): string {
         response += '\n';
     });
     
-    const botMention = replaceBotMentions('@bot', botUserId);
+    const botMention = botUserId ? `<@${botUserId}>` : '@bot';
     response += `\nFor detailed help on a specific plugin, try \`${botMention} help <plugin>\` (e.g., \`${botMention} help karma\`)`;
     return response;
 }
