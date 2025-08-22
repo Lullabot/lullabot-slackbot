@@ -40,8 +40,34 @@ graph TD
 ```
 
 ## Recent Enhancements
+- **Conversions Plugin Architectural Patterns (August 2025)**
+  - Established comprehensive helper function pattern for complex plugins
+  - Created `handleConvertCommand()` for centralized conversion logic with explicit target unit support
+  - Created `sendConversionResponse()` for unified response handling with thread support
+  - Demonstrates advanced refactoring: DRY principle, single responsibility, error handling
+  - Added robust test coverage pattern (33 tests) including edge cases and thread handling
+- **Thread Handling Standardization (August 2025)**
+  - Established consistent threading pattern: `...(threadTs && { thread_ts: threadTs })`
+  - All plugins now properly maintain conversation context in threads
+  - Thread handling integrated into helper functions for reusable implementation
+- **Help Plugin Architectural Improvements (January 2025)**
+  - Implemented helper function pattern for code reuse and maintainability
+  - Created `replaceBotMentions()` for centralizing bot mention replacement logic
+  - Created `getBotUserId()` for centralized API calls with error handling
+  - Created `processHelpRequest()` for unified response generation
+  - Demonstrates best practices: Single Responsibility Principle, pure functions, error handling
+- **Dynamic Bot Identity Integration (January 2025)**
+  - Help system now dynamically fetches bot user ID using `client.auth.test()` pattern
+  - Consistent with uptime plugin approach for bot identity retrieval
+  - Graceful degradation on API failures
+- **Code Quality Patterns Established**
+  - Helper function extraction for eliminating code duplication
+  - Pure function design for better testability
+  - Centralized error handling with graceful degradation
+  - Comprehensive test coverage including threading and edge cases
+  - Integration with automated code review tools (GitHub Copilot)
 - Added link preview control mechanism for factoids
   - Uses lock icon (🔒) to indicate factoids with disabled link previews
 - Improved pattern matching for more reliable message handling
 - Enhanced thread handling in message responses
-- Expanded test coverage for critical plugins 
+- Expanded test coverage for critical plugins

@@ -31,6 +31,10 @@ alwaysApply: true
 - Follow Slack API best practices
 - Use consistent message formatting for bot responses
 - Implement proper file system error handling
+- **Create helper functions to eliminate code duplication** (learned from Issue #38)
+- **Follow Single Responsibility Principle** for maintainable functions
+- **Use pure functions when possible** for better testability
+- **Implement graceful error handling** with meaningful fallbacks
 
 ## Plugin Guidelines
 
@@ -38,6 +42,9 @@ alwaysApply: true
 - Registration: Always register patterns with app.registerPlugin
 - Storage: Use established data storage patterns for persistence
 - Error Handling: Implement proper error handling and user feedback
+- **Bot Identity:** Use `client.auth.test()` pattern for dynamic bot user ID fetching (consistent with uptime.ts)
+- **Helper Functions:** Extract reusable logic into well-documented helper functions
+- **Code Organization:** Group related functionality and minimize duplication
 
 ## Response Format
 
