@@ -141,8 +141,8 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
     patternRegistry.registerPattern(/^convert\s+(.+)$/i, 'conversions', 1);
     patternRegistry.registerPattern(/^what\s+is\s+(.+)\s+in\s+(.+)\?$/i, 'conversions', 1);
 
-    // Function to process conversions in a message
-    function processConversions(text: string): string[] {
+    // Function to process conversions with an optional explicit target unit
+    function processConversionsWithTarget(text: string, targetUnit?: string): string[] {
         const conversions: string[] = [];
         
         // Process temperature conversions
@@ -152,20 +152,35 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                 const value = parseFloat(match[1]);
                 const fromUnit = match[2];
                 
-                // Convert to all three temperature units
-                const fahrenheit = convertTemperature(value, fromUnit, 'fahrenheit');
-                const celsius = convertTemperature(value, fromUnit, 'celsius');
-                const kelvin = convertTemperature(value, fromUnit, 'kelvin');
+                if (targetUnit) {
+                    // Convert to the specified target unit
+                    try {
+                        const converted = convertTemperature(value, fromUnit, targetUnit);
+                        const targetAbbrev = getTemperatureUnitAbbreviation(targetUnit);
+                        conversions.push(`*${match[1]}°${getTemperatureUnitAbbreviation(fromUnit)}* is *${formatNumber(converted)}°${targetAbbrev}*`);
+                    } catch (error) {
+                        // If target unit is invalid for temperature, fall back to default behavior
+                        logger.warn({ error, targetUnit }, 'Invalid temperature target unit, falling back to default');
+                        // Fall through to default temperature conversion logic below
+                    }
+                } 
                 
-                // Build conversational response showing only the OTHER 2 units
-                const fromUnitLower = fromUnit.toLowerCase();
-                let otherUnits = [];
-                
-                if (fromUnitLower.charAt(0) !== 'f') otherUnits.push(`*${formatNumber(fahrenheit)}°F*`);
-                if (fromUnitLower.charAt(0) !== 'c') otherUnits.push(`*${formatNumber(celsius)}°C*`);
-                if (fromUnitLower !== 'kelvin') otherUnits.push(`*${formatNumber(kelvin)}°K*`);
-                
-                conversions.push(`*${match[1]}°${getTemperatureUnitAbbreviation(fromUnit)}* is ${otherUnits.join(' or ')}`);
+                if (!targetUnit || conversions.length === 0) {
+                    // Default behavior: Convert to all three temperature units
+                    const fahrenheit = convertTemperature(value, fromUnit, 'fahrenheit');
+                    const celsius = convertTemperature(value, fromUnit, 'celsius');
+                    const kelvin = convertTemperature(value, fromUnit, 'kelvin');
+                    
+                    // Build conversational response showing only the OTHER 2 units
+                    const fromUnitLower = fromUnit.toLowerCase();
+                    let otherUnits = [];
+                    
+                    if (fromUnitLower.charAt(0) !== 'f') otherUnits.push(`*${formatNumber(fahrenheit)}°F*`);
+                    if (fromUnitLower.charAt(0) !== 'c') otherUnits.push(`*${formatNumber(celsius)}°C*`);
+                    if (fromUnitLower !== 'kelvin') otherUnits.push(`*${formatNumber(kelvin)}°K*`);
+                    
+                    conversions.push(`*${match[1]}°${getTemperatureUnitAbbreviation(fromUnit)}* is ${otherUnits.join(' or ')}`);
+                }
             } catch (error) {
                 logger.error({ error }, 'Temperature conversion error');
             }
@@ -177,11 +192,33 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
             try {
                 const value = parseFloat(match[1]);
                 const fromUnit = match[2];
-                const toUnit = getOppositeDistanceUnit(fromUnit);
+                let toUnit: string;
+                
+                if (targetUnit) {
+                    // Use the explicit target unit
+                    toUnit = targetUnit;
+                } else {
+                    // Use default opposite unit
+                    toUnit = getOppositeDistanceUnit(fromUnit);
+                }
                 
                 if (toUnit !== 'unknown') {
-                    const converted = convertDistance(value, fromUnit, toUnit);
-                    conversions.push(`*${match[1]} ${fromUnit}* is *${formatNumber(converted)} ${toUnit}*`);
+                    try {
+                        const converted = convertDistance(value, fromUnit, toUnit);
+                        conversions.push(`*${match[1]} ${fromUnit}* is *${formatNumber(converted)} ${toUnit}*`);
+                    } catch (error) {
+                        if (targetUnit) {
+                            logger.warn({ error, targetUnit }, 'Invalid distance target unit, falling back to default');
+                            // Fall back to default opposite unit
+                            const defaultToUnit = getOppositeDistanceUnit(fromUnit);
+                            if (defaultToUnit !== 'unknown') {
+                                const converted = convertDistance(value, fromUnit, defaultToUnit);
+                                conversions.push(`*${match[1]} ${fromUnit}* is *${formatNumber(converted)} ${defaultToUnit}*`);
+                            }
+                        } else {
+                            throw error; // Re-throw if it's not a target unit issue
+                        }
+                    }
                 }
             } catch (error) {
                 logger.error({ error }, 'Distance conversion error');
@@ -191,6 +228,73 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         return conversions;
     }
 
+    // Function to process conversions in a message (backward compatibility)
+    function processConversions(text: string): string[] {
+        return processConversionsWithTarget(text);
+    }
+
+    // Helper function to handle convert command logic (eliminates code duplication)
+    function handleConvertCommand(conversionText: string, logPrefix: string, userInfo: string): { conversions: string[], logMessage: string } {
+        let conversions: string[];
+        let logMessage: string;
+        
+        // Check if it's a "convert X to Y" format
+        const toMatch = conversionText.match(/^(.+?)\s+to\s+(.+)$/i);
+        if (toMatch) {
+            // "convert X to Y" format - use explicit target
+            const sourceText = toMatch[1].trim(); // e.g., "5k"
+            const targetUnit = toMatch[2].trim(); // e.g., "in"
+            conversions = processConversionsWithTarget(sourceText, targetUnit);
+            
+            if (conversions.length > 0) {
+                logMessage = `Converted ${conversions.length} units via ${logPrefix} convert X to Y command from user ${userInfo} (target: ${targetUnit})`;
+            } else {
+                logMessage = '';
+            }
+        } else {
+            // "convert X" format - use default opposite units
+            conversions = processConversions(conversionText);
+            
+            if (conversions.length > 0) {
+                logMessage = `Converted ${conversions.length} units via ${logPrefix} convert command from user ${userInfo}`;
+            } else {
+                logMessage = '';
+            }
+        }
+        
+        return { conversions, logMessage };
+    }
+
+    // Helper function to send conversion response (eliminates code duplication)
+    async function sendConversionResponse(
+        conversions: string[], 
+        say: Function, 
+        logMessage: string, 
+        errorMessage: string,
+        threadTs?: string
+    ): Promise<void> {
+        if (conversions.length > 0) {
+            try {
+                await say({
+                    text: conversions.join('\n'),
+                    ...(threadTs && { thread_ts: threadTs })
+                });
+                
+                if (logMessage) {
+                    logger.info(logMessage);
+                }
+            } catch (error) {
+                logger.error({ error }, 'Error sending conversion response');
+            }
+        } else {
+            // No valid conversions found
+            await say({
+                text: errorMessage,
+                ...(threadTs && { thread_ts: threadTs })
+            });
+        }
+    }
+
     // Handle explicit convert commands
     app.message(/^convert\s+(.+)$/i, async ({ message, say, client }) => {
         const msg = message as GenericMessageEvent;
@@ -198,24 +302,23 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         // Skip bot messages to avoid loops
         if (msg.bot_id) return;
         
-        const conversions = processConversions(msg.text || '');
+        // Extract the conversion text from the message
+        const match = (msg.text || '').match(/^convert\s+(.+)$/i);
+        if (!match) return; // This shouldn't happen, but just in case
         
-        if (conversions.length > 0) {
-            try {
-                await say({
-                    text: conversions.join('\n')
-                });
-                
-                logger.info(`Converted ${conversions.length} units via convert command from user ${msg.user}`);
-            } catch (error) {
-                logger.error({ error }, 'Error sending conversion response');
-            }
-        } else {
-            // No valid conversions found in the command
-            await say({
-                text: 'No valid temperature or distance units found. Try something like: `convert 75°F` or `convert 5 miles`'
-            });
-        }
+        const conversionText = match[1]; // e.g., "5k to in" or just "5k"
+        
+        // Use helper function to handle conversion logic
+        const { conversions, logMessage } = handleConvertCommand(conversionText, '', msg.user);
+        
+        // Use helper function to send response
+        await sendConversionResponse(
+            conversions,
+            say,
+            logMessage,
+            'No valid temperature or distance units found. Try something like: `convert 75°F`, `convert 5 miles`, or `convert 5k to inches`',
+            msg.thread_ts
+        );
     });
 
     // Handle question-based conversion commands  
@@ -225,24 +328,24 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         // Skip bot messages to avoid loops
         if (msg.bot_id) return;
         
-        const conversions = processConversions(msg.text || '');
+        // Extract the source and target from the regex groups
+        const match = (msg.text || '').match(/^what\s+is\s+(.+)\s+in\s+(.+)\?$/i);
+        if (!match) return; // This shouldn't happen, but just in case
         
-        if (conversions.length > 0) {
-            try {
-                await say({
-                    text: conversions.join('\n')
-                });
-                
-                logger.info(`Converted ${conversions.length} units via question command from user ${msg.user}`);
-            } catch (error) {
-                logger.error({ error }, 'Error sending conversion response');
-            }
-        } else {
-            // No valid conversions found in the question
-            await say({
-                text: 'I couldn\'t find valid units to convert. Try something like: `what is 75°F in celsius?` or `what is 5 miles in km?`'
-            });
-        }
+        const sourceText = match[1]; // e.g., "5k" from "what is 5k in inches?"
+        const targetUnit = match[2].trim(); // e.g., "inches" from "what is 5k in inches?"
+        
+        // Use the new function with explicit target unit
+        const conversions = processConversionsWithTarget(sourceText, targetUnit);
+        
+        // Use helper function to send response
+        await sendConversionResponse(
+            conversions,
+            say,
+            conversions.length > 0 ? `Converted ${conversions.length} units via question command from user ${msg.user} (target: ${targetUnit})` : '',
+            'I couldn\'t find valid units to convert. Try something like: `what is 75°F in celsius?` or `what is 5 miles in km?`',
+            msg.thread_ts
+        );
     });
 
 
@@ -259,43 +362,35 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         const questionMatch = text.match(/^what\s+is\s+(.+)\s+in\s+(.+)\?$/i);
         
         if (convertMatch) {
-            const conversions = processConversions(convertMatch[1]);
+            const conversionText = convertMatch[1]; // e.g., "5k to in" or just "5k"
             
-            if (conversions.length > 0) {
-                try {
-                    await say({
-                        text: conversions.join('\n')
-                    });
-                    
-                    logger.info(`Converted ${conversions.length} units via @bot convert command from user ${mention.user}`);
-                } catch (error) {
-                    logger.error({ error }, 'Error sending conversion response');
-                }
-            } else {
-                // No valid conversions found in the command
-                await say({
-                    text: 'No valid temperature or distance units found. Try something like: `@bot convert 75°F` or `@bot convert 5 miles`'
-                });
-            }
+            // Use helper function to handle conversion logic
+            const { conversions, logMessage } = handleConvertCommand(conversionText, '@bot', mention.user || 'unknown');
+            
+            // Use helper function to send response
+            await sendConversionResponse(
+                conversions,
+                say,
+                logMessage,
+                'No valid temperature or distance units found. Try something like: `@bot convert 75°F`, `@bot convert 5 miles`, or `@bot convert 5k to inches`',
+                mention.thread_ts
+            );
         } else if (questionMatch) {
-            const conversions = processConversions(text);
+            // Extract the source and target from the regex groups (like main question handler)
+            const sourceText = questionMatch[1]; // e.g., "5k" from "what is 5k in inches?"
+            const targetUnit = questionMatch[2].trim(); // e.g., "inches" from "what is 5k in inches?"
             
-            if (conversions.length > 0) {
-                try {
-                    await say({
-                        text: conversions.join('\n')
-                    });
-                    
-                    logger.info(`Converted ${conversions.length} units via @bot question command from user ${mention.user}`);
-                } catch (error) {
-                    logger.error({ error }, 'Error sending conversion response');
-                }
-            } else {
-                // No valid conversions found in the question
-                await say({
-                    text: 'I couldn\'t find valid units to convert. Try something like: `@bot what is 75°F in celsius?` or `@bot what is 5 miles in km?`'
-                });
-            }
+            // Use the new function with explicit target unit
+            const conversions = processConversionsWithTarget(sourceText, targetUnit);
+            
+            // Use helper function to send response
+            await sendConversionResponse(
+                conversions,
+                say,
+                conversions.length > 0 ? `Converted ${conversions.length} units via @bot question command from user ${mention.user || 'unknown'} (target: ${targetUnit})` : '',
+                'I couldn\'t find valid units to convert. Try something like: `@bot what is 75°F in celsius?` or `@bot what is 5 miles in km?`',
+                mention.thread_ts
+            );
         }
     });
 };

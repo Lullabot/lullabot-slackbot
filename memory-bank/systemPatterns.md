@@ -77,4 +77,4 @@ graph TD
   - Uses lock icon (🔒) to indicate factoids with disabled link previews
 - Improved pattern matching for more reliable message handling
 - Enhanced thread handling in message responses
-- Expanded test coverage for critical plugins 
+- Expanded test coverage for critical plugins

@@ -8,7 +8,7 @@
 - Pattern Registry for cross-plugin command management (`src/services/pattern-registry.ts`)
 - Enhanced plugins with recent improvements:
     - **Conversions** (comprehensive unit conversion support with explicit target units and thread handling)
-    - **Help** (now with dynamic bot names, performance caching, proper TypeScript typing, and comprehensive test coverage)
+    - **Help** (now with dynamic bot names, performance caching, proper TypeScript typing, and comprehensive test coverage, updated factoid help text, and refactored helper functions)
     - **Factoids** (with link preview control and improved pattern matching)
     - **Karma** (with improved thread handling)
     - **Greetings** (hello.ts)
@@ -81,4 +81,4 @@
 ## Known Issues/Risks
 - **Data Storage Scalability:** File-based JSON storage might become slow or unwieldy with very large datasets or high concurrency.
 - **Error Handling:** Continuous improvements to error handling within plugins.
-- **Testing Coverage:** Test files are being expanded across all plugins following conversions plugin example. 
+- **Testing Coverage:** Test files are being expanded across all plugins following conversions plugin example.
