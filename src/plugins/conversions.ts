@@ -270,12 +270,14 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         conversions: string[], 
         say: Function, 
         logMessage: string, 
-        errorMessage: string
+        errorMessage: string,
+        threadTs?: string
     ): Promise<void> {
         if (conversions.length > 0) {
             try {
                 await say({
-                    text: conversions.join('\n')
+                    text: conversions.join('\n'),
+                    ...(threadTs && { thread_ts: threadTs })
                 });
                 
                 if (logMessage) {
@@ -287,7 +289,8 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         } else {
             // No valid conversions found
             await say({
-                text: errorMessage
+                text: errorMessage,
+                ...(threadTs && { thread_ts: threadTs })
             });
         }
     }
@@ -313,7 +316,8 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
             conversions,
             say,
             logMessage,
-            'No valid temperature or distance units found. Try something like: `convert 75°F`, `convert 5 miles`, or `convert 5k to inches`'
+            'No valid temperature or distance units found. Try something like: `convert 75°F`, `convert 5 miles`, or `convert 5k to inches`',
+            msg.thread_ts
         );
     });
 
@@ -334,22 +338,14 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
         // Use the new function with explicit target unit
         const conversions = processConversionsWithTarget(sourceText, targetUnit);
         
-        if (conversions.length > 0) {
-            try {
-                await say({
-                    text: conversions.join('\n')
-                });
-                
-                logger.info(`Converted ${conversions.length} units via question command from user ${msg.user} (target: ${targetUnit})`);
-            } catch (error) {
-                logger.error({ error }, 'Error sending conversion response');
-            }
-        } else {
-            // No valid conversions found in the question
-            await say({
-                text: 'I couldn\'t find valid units to convert. Try something like: `what is 75°F in celsius?` or `what is 5 miles in km?`'
-            });
-        }
+        // Use helper function to send response
+        await sendConversionResponse(
+            conversions,
+            say,
+            conversions.length > 0 ? `Converted ${conversions.length} units via question command from user ${msg.user} (target: ${targetUnit})` : '',
+            'I couldn\'t find valid units to convert. Try something like: `what is 75°F in celsius?` or `what is 5 miles in km?`',
+            msg.thread_ts
+        );
     });
 
 
@@ -376,27 +372,25 @@ const conversionsPlugin: Plugin = async (app: App): Promise<void> => {
                 conversions,
                 say,
                 logMessage,
-                'No valid temperature or distance units found. Try something like: `@bot convert 75°F`, `@bot convert 5 miles`, or `@bot convert 5k to inches`'
+                'No valid temperature or distance units found. Try something like: `@bot convert 75°F`, `@bot convert 5 miles`, or `@bot convert 5k to inches`',
+                mention.thread_ts
             );
         } else if (questionMatch) {
-            const conversions = processConversions(text);
+            // Extract the source and target from the regex groups (like main question handler)
+            const sourceText = questionMatch[1]; // e.g., "5k" from "what is 5k in inches?"
+            const targetUnit = questionMatch[2].trim(); // e.g., "inches" from "what is 5k in inches?"
             
-            if (conversions.length > 0) {
-                try {
-                    await say({
-                        text: conversions.join('\n')
-                    });
-                    
-                    logger.info(`Converted ${conversions.length} units via @bot question command from user ${mention.user}`);
-                } catch (error) {
-                    logger.error({ error }, 'Error sending conversion response');
-                }
-            } else {
-                // No valid conversions found in the question
-                await say({
-                    text: 'I couldn\'t find valid units to convert. Try something like: `@bot what is 75°F in celsius?` or `@bot what is 5 miles in km?`'
-                });
-            }
+            // Use the new function with explicit target unit
+            const conversions = processConversionsWithTarget(sourceText, targetUnit);
+            
+            // Use helper function to send response
+            await sendConversionResponse(
+                conversions,
+                say,
+                conversions.length > 0 ? `Converted ${conversions.length} units via @bot question command from user ${mention.user || 'unknown'} (target: ${targetUnit})` : '',
+                'I couldn\'t find valid units to convert. Try something like: `@bot what is 75°F in celsius?` or `@bot what is 5 miles in km?`',
+                mention.thread_ts
+            );
         }
     });
 };

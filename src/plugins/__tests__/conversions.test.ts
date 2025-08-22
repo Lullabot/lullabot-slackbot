@@ -522,7 +522,7 @@ describe('Conversions Plugin', () => {
             });
         });
 
-        it('should reply in main chat (no threading)', async () => {
+        it('should reply in thread when message is in thread', async () => {
             await conversionsPlugin(app);
             const convertHandler = (app.message as jest.Mock).mock.calls[0][1];
 
@@ -536,7 +536,27 @@ describe('Conversions Plugin', () => {
             await convertHandler({ message, say: mockSay, client: mockClient });
 
             expect(mockSay).toHaveBeenCalledWith({
+                text: '*75°F* is *23.9°C* or *297°K*',
+                thread_ts: '1234567890.000000'
+            });
+        });
+
+        it('should reply in main chat when message is not in thread', async () => {
+            await conversionsPlugin(app);
+            const convertHandler = (app.message as jest.Mock).mock.calls[0][1];
+
+            const message = {
+                text: 'convert 75°F',
+                ts: '1234567890.123456',
+                // No thread_ts - this is a main channel message
+                user: 'U12345'
+            };
+
+            await convertHandler({ message, say: mockSay, client: mockClient });
+
+            expect(mockSay).toHaveBeenCalledWith({
                 text: '*75°F* is *23.9°C* or *297°K*'
+                // No thread_ts expected in response
             });
         });
     });
