@@ -370,4 +370,61 @@ If you need to change how patterns are matched, make sure to update both locatio
 - datejs: Date parsing and formatting
 - dotenv: Environment variable management
 
+## Security
+
+### Environment Variables
+
+**⚠️ CRITICAL: Never commit `.env` files to version control.**
+
+This project uses environment variables for sensitive configuration:
+- `BOT_TOKEN` - Slack Bot User OAuth Token (xoxb-*)
+- `SLACK_APP_TOKEN` - App-level token (xapp-*)
+- `CLIENT_SIGNING_SECRET` - Slack app signing secret
+- `GITHUB_TOKEN` - GitHub Personal Access Token
+- `SLACK_SHARED_SECRET` - Shared secret for prompt library
+
+### Security Features
+
+✅ **Implemented Security Measures:**
+- Comprehensive sensitive data redaction in logging
+- `.env` files excluded from version control
+- Pre-commit hooks for secret scanning
+- Automated security audits in CI/CD
+- Dependency vulnerability monitoring with Dependabot
+
+### Development Security Best Practices
+
+1. **Secrets Management:**
+   - Use `.env` files for local development only
+   - Never hardcode secrets in source code
+   - Rotate tokens regularly
+   - Use environment-specific secrets in production
+
+2. **Pre-commit Security:**
+   ```bash
+   # Pre-commit hooks automatically run:
+   npx lint-staged    # Secret scanning on staged files
+   npm audit --audit-level=high --production # Production dependency vulnerabilities
+   npm test           # Test suite
+   ```
+
+3. **Dependency Security:**
+   - Run `npm audit` before commits
+   - Review and approve Dependabot security updates
+   - Monitor GitHub security advisories
+
+4. **Production Deployment:**
+   - Use secret management services (AWS Secrets Manager, etc.)
+   - Enable audit logging
+   - Implement rate limiting
+   - Use HTTPS-only endpoints
+
+### Reporting Security Issues
+
+Please report security vulnerabilities through:
+- GitHub Security Advisory (preferred)
+- Private communication with maintainers
+
+**Do not report security issues in public issues.**
+
 For detailed API documentation and examples, refer to the [Slack Bolt documentation](https://slack.dev/bolt-js).
