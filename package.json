@@ -35,7 +35,7 @@
   },
   "overrides": {
     "chalk": "5.3.0",
-    "debug": "4.3.7",
+    "debug": "4.4.1",
     "ansi-regex": "6.1.0",
     "ansi-styles": "6.2.1",
     "color-name": "2.0.0",
