@@ -43,13 +43,5 @@
     "is-arrayish": "0.3.2",
     "supports-color": "9.4.0",
     "esbuild": "0.24.0"
-  },
-  "lint-staged": {
-    "*.{js,ts,md,sh}": [
-      "sh -c 'echo \"Checking file: $0\" && ! grep -E \"(xoxb-|xapp-|ghp_|github_pat_|sk-[a-zA-Z0-9]{20,})\" \"$0\" || (echo \"❌ Potential API key detected in file: $0\" && exit 1)'"
-    ],
-    "*.{yml,yaml}": [
-      "sh -c 'echo \"Checking YAML file: $0\" && ! grep -E \"(xoxb-|xapp-|ghp_|github_pat_|sk-[a-zA-Z0-9]{20,})\" \"$0\" || (echo \"❌ Potential API key detected in YAML file: $0\" && exit 1)'"
-    ]
   }
 }

@@ -2,7 +2,27 @@
 
 # Security check - scan for secrets
 echo "🔍 Scanning for potential secrets..."
-npx lint-staged
+# Check staged files for potential API keys
+git diff --staged --name-only | while read file; do
+    if [ -f "$file" ]; then
+        case "$file" in
+            *.js|*.ts|*.md|*.sh)
+                echo "Checking file: $file"
+                if grep -E "(xoxb-|xapp-|ghp_|github_pat_|sk-[a-zA-Z0-9]{20,})" "$file" > /dev/null; then
+                    echo "❌ Potential API key detected in file: $file"
+                    exit 1
+                fi
+                ;;
+            *.yml|*.yaml)
+                echo "Checking YAML file: $file" 
+                if grep -E "(xoxb-|xapp-|ghp_|github_pat_|sk-[a-zA-Z0-9]{20,})" "$file" > /dev/null; then
+                    echo "❌ Potential API key detected in YAML file: $file"
+                    exit 1
+                fi
+                ;;
+        esac
+    fi
+done
 
 # Run npm audit (fail on production vulnerabilities)
 echo "🔐 Running security audit..."
