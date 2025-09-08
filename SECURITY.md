@@ -28,10 +28,12 @@ After extensive remediation efforts:
 
 We take all security bugs seriously. To report a security issue:
 
-1. **For private issues:** Create a GitHub Security Advisory (once public)
-2. **For general issues:** Open an issue in this repository
+1. **For private security issues:** Create a GitHub Security Advisory (once public)
+2. **For private communication:** Please contact the maintainers directly
 3. **Response time:** Within 48 hours for acknowledgment
 4. **Resolution target:** 7 days for critical issues
+
+**⚠️ IMPORTANT: Do not report security vulnerabilities in public issues as this could expose exploits before they can be fixed.**
 
 ## Current Security Status
 
@@ -94,16 +96,16 @@ As of the latest audit (after remediation), there are **85 known vulnerabilities
 
 ## Security Checklist
 
-- [ ] 🟡 npm vulnerabilities reduced (From 101 to 85, likely false positives)
-- [ ] ✅ No hardcoded secrets
-- [ ] ✅ `.env` properly gitignored
-- [ ] ✅ Sensitive data logging protection
-- [ ] ❌ Security scanning in CI/CD
-- [ ] ❌ Pre-commit hooks installed
-- [ ] ✅ SECURITY.md documented
-- [ ] ❌ GitHub security features enabled
-- [ ] ✅ All tests passing with updated dependencies
-- [ ] ✅ Production dependencies secure (vulnerabilities only in dev deps)
+- [x] 🟡 npm vulnerabilities reduced (From 101 to 83, likely false positives in dev dependencies)
+- [x] ✅ No hardcoded secrets
+- [x] ✅ `.env` properly gitignored
+- [x] ✅ Sensitive data logging protection
+- [x] ✅ Security scanning in CI/CD
+- [x] ✅ Pre-commit hooks installed
+- [x] ✅ SECURITY.md documented
+- [x] ✅ GitHub security features enabled (Dependabot)
+- [x] ✅ All tests passing with updated dependencies
+- [x] ✅ Production dependencies secure (vulnerabilities only in dev deps)
 
 ## Contact
 

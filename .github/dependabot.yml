@@ -26,11 +26,6 @@ updates:
     allow:
       - dependency-type: "direct"
       - dependency-type: "indirect"
-    # Ignore specific packages if needed
-    ignore:
-      # Ignore major version updates for stable packages
-      - dependency-name: "node"
-        update-types: ["version-update:semver-major"]
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"

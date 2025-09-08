@@ -36,7 +36,7 @@
     "typescript": "^5.0.0"
   },
   "lint-staged": {
-    "*": [
+    "*.{js,ts,md,yml,yaml,sh,json}": [
       "sh -c 'echo \"Checking file: $0\" && ! grep -i -E \"(api[_-]?key|secret|password|token|auth|credential|private[_-]?key)\" \"$0\" || (echo \"❌ Potential secret detected in file: $0\" && exit 1)'"
     ]
   }

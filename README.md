@@ -403,9 +403,9 @@ This project uses environment variables for sensitive configuration:
 2. **Pre-commit Security:**
    ```bash
    # Pre-commit hooks automatically run:
-   npm run lint        # Secret scanning
-   npm audit          # Dependency vulnerabilities
-   npm test          # Test suite
+   npx lint-staged    # Secret scanning on staged files
+   npm audit --audit-level=high --production # Production dependency vulnerabilities
+   npm test           # Test suite
    ```
 
 3. **Dependency Security:**
