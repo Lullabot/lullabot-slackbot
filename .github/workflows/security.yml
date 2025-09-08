@@ -34,6 +34,7 @@ jobs:
 
       - name: Scan for secrets
         uses: trufflesecurity/trufflehog@main
+        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
         with:
           path: ./
           base: main
