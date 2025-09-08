@@ -1,16 +1,19 @@
 import { App } from '@slack/bolt';
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
 import helpPlugin, { __testResetCache } from '../help';
 import patternRegistry from '../../services/pattern-registry';
 
 // Mock dependencies
-jest.mock('../../services/pattern-registry', () => ({
-    registerPattern: jest.fn()
+vi.mock('../../services/pattern-registry', () => ({
+    default: {
+        registerPattern: vi.fn()
+    }
 }));
 
 // Mock console methods to avoid noise in tests
 const originalConsoleError = console.error;
 beforeAll(() => {
-    console.error = jest.fn();
+    console.error = vi.fn();
 });
 
 afterAll(() => {
@@ -19,27 +22,27 @@ afterAll(() => {
 
 describe('Help Plugin', () => {
     let app: App;
-    let mockSay: jest.Mock;
+    let mockSay: any;
     let mockClient: any;
 
     beforeEach(() => {
         // Reset all mocks
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         // Reset cache for test isolation
         __testResetCache();
 
-        mockSay = jest.fn();
+        mockSay = vi.fn();
         mockClient = {
             auth: {
-                test: jest.fn()
+                test: vi.fn()
             }
         };
 
         // Create mock app
         app = {
-            event: jest.fn(),
-            message: jest.fn()
+            event: vi.fn(),
+            message: vi.fn()
         } as any;
     });
 
@@ -76,8 +79,8 @@ describe('Help Plugin', () => {
             await helpPlugin(app);
             
             // Extract the registered handlers for testing
-            const appEventCall = (app.event as jest.Mock).mock.calls.find(call => call[0] === 'app_mention');
-            const messageCall = (app.message as jest.Mock).mock.calls.find(call => call[1]);
+            const appEventCall = (app.event as any).mock.calls.find((call: any) => call[0] === 'app_mention');
+            const messageCall = (app.message as any).mock.calls.find((call: any) => call[1]);
             
             appMentionHandler = appEventCall[1];
             messageHandler = messageCall[1];
@@ -176,7 +179,7 @@ describe('Help Plugin', () => {
             await helpPlugin(app);
 
             // Extract the registered message handler for testing
-            const messageCall = (app.message as jest.Mock).mock.calls.find(call => call[1]);
+            const messageCall = (app.message as any).mock.calls.find((call: any) => call[1]);
             messageHandler = messageCall[1];
         });
 
