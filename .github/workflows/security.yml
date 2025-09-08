@@ -45,12 +45,18 @@ jobs:
 
       - name: Check for .env files
         run: |
-          if find . -name ".env*" -not -path "./node_modules/*" -not -path "./.git/*" | grep -q .; then
-            echo "⚠️ Warning: .env files found in repository"
-            find . -name ".env*" -not -path "./node_modules/*" -not -path "./.git/*"
+          # Find .env files but exclude .env.defaults (template file is safe)
+          env_files=$(find . -name ".env*" -not -path "./node_modules/*" -not -path "./.git/*" -not -name ".env.defaults")
+          if echo "$env_files" | grep -q .; then
+            echo "⚠️ Warning: .env files found in repository (excluding .env.defaults)"
+            echo "$env_files"
             exit 1
           else
-            echo "✅ No .env files found in repository"
+            echo "✅ No problematic .env files found in repository"
+            # Show .env.defaults if it exists (for transparency)
+            if [ -f ".env.defaults" ]; then
+              echo "ℹ️  Found .env.defaults (template file - allowed)"
+            fi
           fi
 
   dependency-review:
