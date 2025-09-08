@@ -1,5 +1,5 @@
 import { App } from '@slack/bolt';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import conversionsPlugin from '../conversions';
 import patternRegistry from '../../services/pattern-registry';
 
@@ -22,7 +22,7 @@ vi.mock('../../logger', () => ({
 
 describe('Conversions Plugin', () => {
     let app: App;
-    let mockSay: any;
+    let mockSay: Mock;
     let mockClient: any;
 
     beforeEach(() => {

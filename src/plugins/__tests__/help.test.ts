@@ -1,5 +1,5 @@
 import { App } from '@slack/bolt';
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi, Mock } from 'vitest';
 import helpPlugin, { __testResetCache } from '../help';
 import patternRegistry from '../../services/pattern-registry';
 
@@ -22,7 +22,7 @@ afterAll(() => {
 
 describe('Help Plugin', () => {
     let app: App;
-    let mockSay: any;
+    let mockSay: Mock;
     let mockClient: any;
 
     beforeEach(() => {

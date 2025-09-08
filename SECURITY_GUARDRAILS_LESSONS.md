@@ -68,7 +68,17 @@ fi
 ```bash
 # Effective pre-commit hook structure
 echo "🔍 Scanning for potential secrets..."
-npx lint-staged
+# Direct secret scanning for staged files
+git diff --staged --name-only | while read file; do
+    if [ -f "$file" ]; then
+        case "$file" in
+            *.js|*.ts|*.md|*.sh)
+                if grep -E "(xoxb-|xapp-|ghp_|github_pat_|sk-[a-zA-Z0-9]{20,})" "$file" > /dev/null; then
+                    echo "❌ Potential API key detected in file: $file"; exit 1
+                fi ;;
+        esac
+    fi
+done
 
 echo "🔐 Running security audit..."
 # Handle false positives intelligently
@@ -151,7 +161,7 @@ find . -name ".env*" -not -name ".env.defaults" | grep -q . && exit 1
 **Lesson**: Choose tools that integrate well with your workflow and minimize false positives.
 
 **Effective Combinations**:
-- **lint-staged**: Immediate pre-commit scanning with targeted patterns
+- **Direct git hooks**: Immediate pre-commit scanning with targeted patterns via git diff
 - **TruffleHog**: Advanced secret detection with entropy analysis
 - **npm audit**: Dependency vulnerability scanning with smart filtering
 - **Dependabot**: Automated dependency updates with security focus
@@ -227,9 +237,9 @@ The goal is not perfect security (impossible) but appropriate security for your 
 ## Reference Implementation
 
 For a complete reference implementation of these principles, see:
-- `.husky/pre-commit`: Smart pre-commit security scanning
+- `.husky/pre-commit`: Smart pre-commit security scanning with direct git diff approach
 - `.github/workflows/security.yml`: Multi-stage CI/CD security automation  
-- `package.json` lint-staged configuration: Targeted secret pattern matching
+- `package.json` overrides section: Clean dependency version enforcement
 - `SECURITY.md`: Comprehensive security policy and documentation
 
 *Last Updated: Based on security remediation completed in 2024*
