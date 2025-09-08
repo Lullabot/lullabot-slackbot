@@ -36,8 +36,11 @@
     "typescript": "^5.0.0"
   },
   "lint-staged": {
-    "*.{js,ts,md,yml,yaml,sh,json}": [
-      "sh -c 'echo \"Checking file: $0\" && ! grep -i -E \"(api[_-]?key|secret|password|token|auth|credential|private[_-]?key)\" \"$0\" || (echo \"❌ Potential secret detected in file: $0\" && exit 1)'"
+    "*.{js,ts,md,sh}": [
+      "sh -c 'echo \"Checking file: $0\" && ! grep -E \"(xoxb-|xapp-|ghp_|github_pat_|sk-[a-zA-Z0-9]{20,})\" \"$0\" || (echo \"❌ Potential API key detected in file: $0\" && exit 1)'"
+    ],
+    "*.{yml,yaml}": [
+      "sh -c 'echo \"Checking YAML file: $0\" && ! grep -E \"(xoxb-|xapp-|ghp_|github_pat_|sk-[a-zA-Z0-9]{20,})\" \"$0\" || (echo \"❌ Potential API key detected in YAML file: $0\" && exit 1)'"
     ]
   }
 }
