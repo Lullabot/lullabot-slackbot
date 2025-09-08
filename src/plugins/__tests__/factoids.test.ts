@@ -1,19 +1,22 @@
 import { App } from '@slack/bolt';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import factoidsPlugin from '../factoids';
 import patternRegistry from '../../services/pattern-registry';
 
 // Mock dependencies
-jest.mock('fs', () => ({
+vi.mock('fs', () => ({
     promises: {
-        mkdir: jest.fn().mockResolvedValue(undefined),
-        readFile: jest.fn().mockRejectedValue(new Error('File not found')),
-        writeFile: jest.fn().mockResolvedValue(undefined)
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockRejectedValue(new Error('File not found')),
+        writeFile: vi.fn().mockResolvedValue(undefined)
     }
 }));
 
-jest.mock('../../services/pattern-registry', () => ({
-    registerPattern: jest.fn(),
-    matchesAnyPattern: jest.fn().mockReturnValue(false)
+vi.mock('../../services/pattern-registry', () => ({
+    default: {
+        registerPattern: vi.fn(),
+        matchesAnyPattern: vi.fn().mockReturnValue(false)
+    }
 }));
 
 // Use these patterns to test if the factoid plugin would trigger
@@ -58,17 +61,17 @@ describe('Factoids Plugin', () => {
 
     beforeEach(() => {
         // Reset mocks
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         
         // Create a mock app with a message handler
         app = {
-            message: jest.fn((regex, handler) => {
+            message: vi.fn((regex, handler) => {
                 messageRegexPattern = regex;
                 messageHandler = handler;
             }),
-            event: jest.fn(),
-            action: jest.fn(),
-            view: jest.fn()
+            event: vi.fn(),
+            action: vi.fn(),
+            view: vi.fn()
         };
         
         // Initialize the plugin

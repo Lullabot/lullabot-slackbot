@@ -1,35 +1,38 @@
 import { App } from '@slack/bolt';
+import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import conversionsPlugin from '../conversions';
 import patternRegistry from '../../services/pattern-registry';
 
 // Mock dependencies
-jest.mock('../../services/pattern-registry', () => ({
-    registerPattern: jest.fn(),
-    matchesAnyPattern: jest.fn().mockReturnValue(false)
+vi.mock('../../services/pattern-registry', () => ({
+    default: {
+        registerPattern: vi.fn(),
+        matchesAnyPattern: vi.fn().mockReturnValue(false)
+    }
 }));
 
-jest.mock('../../logger', () => ({
-    createLogger: jest.fn(() => ({
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn(),
-        debug: jest.fn()
+vi.mock('../../logger', () => ({
+    createLogger: vi.fn(() => ({
+        info: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        debug: vi.fn()
     }))
 }));
 
 describe('Conversions Plugin', () => {
     let app: App;
-    let mockSay: jest.Mock;
+    let mockSay: Mock;
     let mockClient: any;
 
     beforeEach(() => {
         // Reset all mocks
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         
-        mockSay = jest.fn();
+        mockSay = vi.fn();
         mockClient = {
             users: {
-                info: jest.fn().mockResolvedValue({
+                info: vi.fn().mockResolvedValue({
                     user: { id: 'U12345', name: 'testuser' }
                 })
             }
@@ -37,18 +40,18 @@ describe('Conversions Plugin', () => {
 
         // Create a mock App instance
         app = {
-            message: jest.fn(),
-            event: jest.fn(),
-            action: jest.fn(),
-            command: jest.fn(),
-            options: jest.fn(),
-            error: jest.fn(),
+            message: vi.fn(),
+            event: vi.fn(),
+            action: vi.fn(),
+            command: vi.fn(),
+            options: vi.fn(),
+            error: vi.fn(),
             client: mockClient
         } as any;
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     describe('Plugin Registration', () => {
@@ -507,7 +510,7 @@ describe('Conversions Plugin', () => {
     describe('Edge Cases', () => {
         it('should show error for invalid convert command', async () => {
             await conversionsPlugin(app);
-            const convertHandler = (app.message as jest.Mock).mock.calls[0][1];
+            const convertHandler = (app.message as any).mock.calls[0][1];
 
             const message = {
                 text: 'convert Hello world, how are you?',
@@ -524,7 +527,7 @@ describe('Conversions Plugin', () => {
 
         it('should reply in thread when message is in thread', async () => {
             await conversionsPlugin(app);
-            const convertHandler = (app.message as jest.Mock).mock.calls[0][1];
+            const convertHandler = (app.message as any).mock.calls[0][1];
 
             const message = {
                 text: 'convert 75°F',
@@ -543,7 +546,7 @@ describe('Conversions Plugin', () => {
 
         it('should reply in main chat when message is not in thread', async () => {
             await conversionsPlugin(app);
-            const convertHandler = (app.message as jest.Mock).mock.calls[0][1];
+            const convertHandler = (app.message as any).mock.calls[0][1];
 
             const message = {
                 text: 'convert 75°F',
