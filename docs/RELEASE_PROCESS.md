@@ -5,6 +5,7 @@ This document outlines the release process for the Lullabot Slackbot project.
 ## Versioning Strategy
 
 We follow [Semantic Versioning](https://semver.org/) (SemVer):
+
 - **MAJOR** version (X.0.0): Incompatible API changes or major architectural changes
 - **MINOR** version (0.X.0): New functionality in a backwards compatible manner
 - **PATCH** version (0.0.X): Backwards compatible bug fixes
@@ -74,6 +75,7 @@ After creating the release:
    - Monitor the deployment in Slack to ensure the bot comes back online
 
 2. **Verify Deployment**
+
    ```bash
    # Check bot status in Slack
    # Type in any channel: @bot uptime
@@ -139,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 For critical production bugs:
 
 1. Create hotfix branch from the latest tag:
+
    ```bash
    # Replace <latest-release-tag> with your current release (e.g., v1.0.0)
    git checkout -b hotfix/fix-description tags/<latest-release-tag>
@@ -149,6 +152,7 @@ For critical production bugs:
 3. Create PR to main branch
 
 4. After merge, create patch release:
+
    ```bash
    git tag -a v1.0.1 -m "Hotfix: Description of fix"
    git push origin v1.0.1
@@ -160,6 +164,7 @@ For critical production bugs:
 If a release causes issues in production:
 
 1. **Immediate Rollback**
+
    ```bash
    # Check out the previous stable release tag
    git checkout tags/<previous-version>
@@ -175,6 +180,7 @@ If a release causes issues in production:
    ```
 
 2. **Git Revert** (if needed)
+
    ```bash
    # Create revert commit
    git revert <commit-hash>
@@ -224,6 +230,7 @@ Consider implementing these automations:
    - Tools: `standard-version` or `semantic-release`
 
 2. **Automated Version Bumping**
+
    ```json
    {
      "scripts": {
