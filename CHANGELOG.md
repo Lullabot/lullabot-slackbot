@@ -7,25 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2025-01-09 (Initial Release)
+
 ### Added
-
-- Release process documentation (RELEASE_PROCESS.md)
-- Changelog file for tracking changes
-
-### Fixed
-
-- TypeScript build errors in conversions.test.ts by replacing Jest types with Vitest types
-
-### Security
-
-- Comprehensive security remediation and infrastructure improvements
-- Migration from vulnerable dev dependencies to secure alternatives
-- Implementation of security scanning workflows (TruffleHog, npm audit)
-- Pre-commit hooks for security validation
-
-## [0.1.0] - YYYY-MM-DD (Initial Release)
-
-### Features
 
 - Core bot functionality with Slack Bolt framework
 - Plugin architecture for modular feature development
@@ -41,6 +25,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Docker support for containerized deployment
 - TypeScript for type safety
 - GitHub Actions CI/CD pipeline
+- Release process documentation (docs/RELEASE_PROCESS.md)
+- Changelog file for tracking changes
+
+### Fixed
+
+- TypeScript build errors in conversions.test.ts by replacing Jest types with Vitest types
+
+### Security
+
+- Comprehensive security remediation and infrastructure improvements
+- Migration from vulnerable dev dependencies to secure alternatives
+- Implementation of security scanning workflows (TruffleHog, npm audit)
+- Pre-commit hooks for security validation
 
 ### Infrastructure
 
@@ -49,5 +46,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Nodemon for development hot-reload
 - ESLint and Prettier for code quality
 
-<!-- After v0.1.0 is released, update the link below to compare/v0.1.0...HEAD -->
-[Unreleased]: https://github.com/Lullabot/lullabot-slackbot/compare/main...HEAD
+[Unreleased]: https://github.com/Lullabot/lullabot-slackbot/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Lullabot/lullabot-slackbot/releases/tag/v0.1.0
