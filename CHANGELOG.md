@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Implementation of security scanning workflows (TruffleHog, npm audit)
 - Pre-commit hooks for security validation
 
-## [0.1.0] - TBD (Initial Release)
+## [0.1.0] - YYYY-MM-DD (Initial Release)
 
 ### Features
 
@@ -49,4 +49,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Nodemon for development hot-reload
 - ESLint and Prettier for code quality
 
+<!-- After v0.1.0 is released, update the link below to compare/v0.1.0...HEAD -->
 [Unreleased]: https://github.com/Lullabot/lullabot-slackbot/compare/main...HEAD

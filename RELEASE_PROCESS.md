@@ -43,11 +43,17 @@ VERSION="v1.0.0"  # Replace with actual version
 git tag -a $VERSION -m "Release $VERSION"
 git push origin $VERSION
 
-# Create GitHub release with changelog
+# Extract relevant section from CHANGELOG.md for the current version
+sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | sed '$d' > RELEASE_NOTES.md
+
+# Create GitHub release with extracted changelog section
 gh release create $VERSION \
   --title "Release $VERSION" \
-  --notes-file CHANGELOG.md \
+  --notes-file RELEASE_NOTES.md \
   --target main
+
+# Clean up temporary file
+rm RELEASE_NOTES.md
 ```
 
 #### Using GitHub Web Interface
@@ -124,8 +130,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 1. During development, add changes under `[Unreleased]` section
 2. When preparing a release:
    - Move `[Unreleased]` items to a new version section
-   - Add the version number and date
+   - Add the version number and date  
    - Keep `[Unreleased]` section for future changes
+   - Update the `[Unreleased]` link at the bottom of CHANGELOG.md to compare from the new version tag (e.g., change `main...HEAD` to `v1.0.0...HEAD`)
 
 ## Hotfix Process
 
@@ -133,7 +140,8 @@ For critical production bugs:
 
 1. Create hotfix branch from the latest tag:
    ```bash
-   git checkout -b hotfix/fix-description tags/v1.0.0
+   # Replace <latest-release-tag> with your current release (e.g., v1.0.0)
+   git checkout -b hotfix/fix-description tags/<latest-release-tag>
    ```
 
 2. Make the fix and test thoroughly
@@ -153,9 +161,17 @@ If a release causes issues in production:
 
 1. **Immediate Rollback**
    ```bash
-   # Revert to previous Docker image tag
+   # Check out the previous stable release tag
+   git checkout tags/<previous-version>
+   
+   # Rebuild and deploy from that version
    docker-compose down
    docker-compose up -d --build
+   
+   # OR if using a container registry with tagged images:
+   # docker-compose down
+   # docker pull your-registry/lullabot-slackbot:<previous-version>
+   # docker-compose up -d
    ```
 
 2. **Git Revert** (if needed)
