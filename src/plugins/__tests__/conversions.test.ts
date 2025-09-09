@@ -80,7 +80,7 @@ describe('Conversions Plugin', () => {
         beforeEach(async () => {
             await conversionsPlugin(app);
             // Get the convert command handler (first message handler)
-            convertHandler = (app.message as jest.Mock).mock.calls[0][1];
+            convertHandler = (app.message as Mock).mock.calls[0][1];
         });
 
         it('should convert Fahrenheit via convert command', async () => {
@@ -343,7 +343,7 @@ describe('Conversions Plugin', () => {
         beforeEach(async () => {
             await conversionsPlugin(app);
             // Get the question handler (second message handler)
-            questionHandler = (app.message as jest.Mock).mock.calls[1][1];
+            questionHandler = (app.message as Mock).mock.calls[1][1];
         });
 
         it('should handle temperature questions', async () => {
@@ -397,7 +397,7 @@ describe('Conversions Plugin', () => {
         beforeEach(async () => {
             await conversionsPlugin(app);
             // Get the mention handler from the call to app.event
-            mentionHandler = (app.event as jest.Mock).mock.calls[0][1];
+            mentionHandler = (app.event as Mock).mock.calls[0][1];
         });
 
         it('should handle convert commands via mention', async () => {
