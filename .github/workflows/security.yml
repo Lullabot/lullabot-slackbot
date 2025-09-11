@@ -43,18 +43,24 @@ jobs:
 
       - name: Scan for secrets (Push)
         uses: trufflesecurity/trufflehog@main
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
         with:
           path: ./
           base: ${{ github.event.before }}
           head: ${{ github.event.after }}
           extra_args: --debug --only-verified
 
+      - name: Scan for secrets (Initial Push)
+        if: github.event_name == 'push' && github.event.before == '0000000000000000000000000000000000000000'
+        run: |
+          echo "🔍 Running full scan for initial branch push..."
+          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:v3.68.5 filesystem /pwd --only-verified --fail
+
       - name: Full repository scan (Scheduled)
         if: github.event_name == 'schedule'
         run: |
           echo "🔍 Running full repository scan for secrets..."
-          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:latest filesystem /pwd --only-verified --fail
+          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:v3.68.5 filesystem /pwd --only-verified --fail
 
       - name: Run tests
         run: npm test
