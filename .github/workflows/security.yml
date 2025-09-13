@@ -54,13 +54,13 @@ jobs:
         if: github.event_name == 'push' && github.event.before == '0000000000000000000000000000000000000000'
         run: |
           echo "🔍 Running full scan for initial branch push..."
-          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:v3.68.5 filesystem /pwd --only-verified --fail
+          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:v3.90.6 filesystem /pwd --only-verified --fail
 
       - name: Full repository scan (Scheduled)
         if: github.event_name == 'schedule'
         run: |
           echo "🔍 Running full repository scan for secrets..."
-          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:v3.68.5 filesystem /pwd --only-verified --fail
+          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:v3.90.6 filesystem /pwd --only-verified --fail
 
       - name: Run tests
         run: npm test
