@@ -19,7 +19,7 @@
     "@slack/types": "^2.14.0",
     "datejs": "^1.0.0-rc3",
     "dotenv": "^17.0.0",
-    "pino": "^9.8.0",
+    "pino": "^9.11.0",
     "pino-pretty": "^13.1.1"
   },
   "devDependencies": {
