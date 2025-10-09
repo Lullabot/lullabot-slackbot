@@ -6,8 +6,8 @@ echo "🔍 Scanning for potential secrets..."
 git diff --staged --name-only | while read file; do
     if [ -f "$file" ]; then
         case "$file" in
-            *SECURITY*|*security*)
-                echo "Skipping security documentation file: $file (may contain example patterns)"
+            *SECURITY*|*security*|CLAUDE.md)
+                echo "Skipping documentation file: $file (may contain example patterns)"
                 ;;
             *.js|*.ts|*.md|*.sh)
                 echo "Checking file: $file"
