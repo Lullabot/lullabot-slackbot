@@ -42,6 +42,6 @@
     "color-convert": "3.1.2",
     "is-arrayish": "0.3.4",
     "supports-color": "10.2.2",
-    "esbuild": "0.25.11"
+    "esbuild": "0.27.0"
   }
 }
