@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Plugin } from './types';
 import { config } from './config';
+import { pluginRegistry } from './services/plugin-registry';
 
 // Initialize the Bolt app with validated config
 const app = new App({
@@ -33,10 +34,16 @@ const loadPlugins = async (app: App): Promise<void> => {
 
     // Load each plugin
     for (const file of pluginFiles) {
+        // Check if plugin is enabled via registry
+        if (!pluginRegistry.isPluginEnabled(file)) {
+            console.log(`⏭️  Skipping disabled plugin: ${file}`);
+            continue;
+        }
+
         try {
             const pluginModule = await import(path.join(pluginsDir, file));
             const plugin: Plugin = pluginModule.default;
-            
+
             if (typeof plugin === 'function') {
                 await plugin(app);
                 console.log(`✅ Successfully loaded plugin: ${file}`);
