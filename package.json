@@ -26,10 +26,10 @@
     "@types/datejs": "^0.0.36",
     "@types/node": "^24.5.2",
     "husky": "^9.1.7",
-    "vitest": "^3.2.4",
+    "vitest": "^4.0.0",
     "tsx": "^4.20.6",
     "rimraf": "^6.0.0",
-    "@vitest/ui": "^3.2.4",
+    "@vitest/ui": "^4.0.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
   },
