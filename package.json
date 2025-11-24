@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@slack/bolt": "^4.1.1",
-    "@slack/types": "^2.14.0",
+    "@slack/types": "^2.19.0",
     "datejs": "^1.0.0-rc3",
     "dotenv": "^17.0.0",
     "pino": "^10.0.0",
