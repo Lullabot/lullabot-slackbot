@@ -153,4 +153,72 @@ describe('Factoids Plugin', () => {
             });
         });
     });
+
+    describe('Slack Link Formatting', () => {
+        // Test helper functions for escaping/unescaping Slack links
+        const escapeSlackLinks = (text: string): string => {
+            return text.replace(/<(https?:\/\/[^>|]+)(\|[^>]+)?>/g, '{$1$2}');
+        };
+
+        const unescapeSlackLinks = (text: string): string => {
+            return text.replace(/\{(https?:\/\/[^}|]+)(\|[^}]+)?\}/g, '<$1$2>');
+        };
+
+        it('should escape Slack links with display text', () => {
+            const input = '<https://example.com|Link Text>';
+            const expected = '{https://example.com|Link Text}';
+            expect(escapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should escape Slack links without display text', () => {
+            const input = '<https://example.com>';
+            const expected = '{https://example.com}';
+            expect(escapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should escape multiple Slack links in text', () => {
+            const input = 'View <https://github.com|GitHub> and <https://google.com|Google>';
+            const expected = 'View {https://github.com|GitHub} and {https://google.com|Google}';
+            expect(escapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should unescape Slack links with display text', () => {
+            const input = '{https://example.com|Link Text}';
+            const expected = '<https://example.com|Link Text>';
+            expect(unescapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should unescape Slack links without display text', () => {
+            const input = '{https://example.com}';
+            const expected = '<https://example.com>';
+            expect(unescapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should handle round-trip escaping and unescaping', () => {
+            const original = 'Check out <https://github.com/Lullabot/lullabot-slackbot|our repo> for more info';
+            const escaped = escapeSlackLinks(original);
+            const unescaped = unescapeSlackLinks(escaped);
+            expect(unescaped).toBe(original);
+        });
+
+        it('should preserve complex factoid with multiple links', () => {
+            const original = 'View the list: <https://github.com/orgs/Lullabot/repositories?q=topic%3Amirror+sort%3Aname-asc+archived%3Afalse|Current projects>, <https://github.com/orgs/Lullabot/repositories?q=topic%3Amirror+sort%3Aname-asc+archived%3Atrue|Historical projects>';
+            const escaped = escapeSlackLinks(original);
+            const unescaped = unescapeSlackLinks(escaped);
+            expect(unescaped).toBe(original);
+        });
+
+        it('should not modify text without Slack links', () => {
+            const input = 'This is plain text with no links';
+            expect(escapeSlackLinks(input)).toBe(input);
+            expect(unescapeSlackLinks(input)).toBe(input);
+        });
+
+        it('should handle mixed content with links and plain text', () => {
+            const original = 'Some text <https://example.com|link> more text';
+            const escaped = escapeSlackLinks(original);
+            expect(escaped).toBe('Some text {https://example.com|link} more text');
+            expect(unescapeSlackLinks(escaped)).toBe(original);
+        });
+    });
 }); 

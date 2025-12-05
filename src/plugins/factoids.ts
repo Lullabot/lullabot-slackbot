@@ -153,6 +153,18 @@ function unescapeReply(text: string): string {
     return text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
 
+// Escape Slack link formatting for display in modal inputs
+// Converts <URL|Text> to {URL|Text} to prevent Slack from rendering it
+function escapeSlackLinks(text: string): string {
+    return text.replace(/<(https?:\/\/[^>|]+)(\|[^>]+)?>/g, '{$1$2}');
+}
+
+// Restore Slack link formatting from escaped format
+// Converts {URL|Text} back to <URL|Text>
+function unescapeSlackLinks(text: string): string {
+    return text.replace(/\{(https?:\/\/[^}|]+)(\|[^}]+)?\}/g, '<$1$2>');
+}
+
 // Utility to check and normalize reply factoids
 function normalizeReplyFactoid(values: string[]): { values: string[], reply: boolean } {
     let reply = false;
@@ -1283,7 +1295,7 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 }
             });
         } else if (act === 'edit') {
-            // Open edit modal, always unescape <reply>
+            // Open edit modal, always unescape <reply> and escape Slack links
             await client.views.open({
                 trigger_id: (body as any).trigger_id,
                 view: {
@@ -1301,7 +1313,7 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                             element: {
                                 type: 'plain_text_input',
                                 action_id: 'value',
-                                initial_value: fact.value.map(unescapeReply).join(' | '),
+                                initial_value: fact.value.map(v => escapeSlackLinks(unescapeReply(v))).join(' | '),
                                 multiline: true
                             }
                         },
@@ -1359,8 +1371,8 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         const valueInput = values['factoid_value']?.['value']?.value;
         const previewInput = values['factoid_preview']?.['preview']?.selected_option?.value;
         if (typeof valueInput === 'string' && typeof previewInput === 'string') {
-            // Always unescape and normalize before saving
-            const splitValues = valueInput.split('|').map(v => unescapeReply(v.trim())).filter(Boolean);
+            // Always unescape Slack links, unescape HTML entities, and normalize before saving
+            const splitValues = valueInput.split('|').map(v => unescapeSlackLinks(unescapeReply(v.trim()))).filter(Boolean);
             const { values: newValues, reply } = normalizeReplyFactoid(splitValues);
             const previewLinks = previewInput === 'preview';
             const factoids = await loadFacts(team);
