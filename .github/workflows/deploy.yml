@@ -1,0 +1,63 @@
+name: Deploy to production server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Connect to WireGuard VPN
+        uses: ./.github/actions/wireguard-connect
+        with:
+          private-key: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
+          runner-address: ${{ secrets.WIREGUARD_RUNNER_ADDRESS }}
+          dns: ${{ secrets.WIREGUARD_DNS }}
+          peer-public-key: ${{ secrets.WIREGUARD_PUBLIC_KEY }}
+          peer-endpoint: ${{ secrets.WIREGUARD_ENDPOINT }}
+          allowed-ips: ${{ secrets.WIREGUARD_ALLOWED_IPS }}
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Pull latest code
+        run: |
+          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
+            "cd /etc/docker/slackbot && sudo git pull"
+
+      - name: Pull latest Docker images
+        run: |
+          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
+            "cd /etc/docker/slackbot && sudo docker compose pull"
+
+      - name: Build containers
+        run: |
+          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
+            "cd /etc/docker/slackbot && sudo docker compose build"
+
+      - name: Restart application
+        run: |
+          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
+            "cd /etc/docker/slackbot && sudo docker compose down"
+          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
+            "cd /etc/docker/slackbot && sudo docker compose up -d"
+
+      - name: Verify deployment
+        run: |
+          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
+            "cd /etc/docker/slackbot && sudo docker compose ps"
+
+      - name: Cleanup WireGuard configuration
+        if: always()
+        shell: bash
+        run: |
+          sudo rm -f /etc/wireguard/private.key /etc/wireguard/wg0.conf
