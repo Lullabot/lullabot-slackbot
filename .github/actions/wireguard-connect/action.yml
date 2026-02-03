@@ -1,0 +1,72 @@
+name: 'Connect to WireGuard VPN'
+description: 'Installs WireGuard and connects to Lullabot private network'
+
+inputs:
+  private-key:
+    description: 'WireGuard private key for the runner'
+    required: true
+  runner-address:
+    description: 'Runner overlay network address (e.g., 10.0.1.10/32)'
+    required: true
+  dns:
+    description: 'DNS server for the VPN connection'
+    required: true
+  peer-public-key:
+    description: 'WireGuard peer public key'
+    required: true
+  peer-endpoint:
+    description: 'WireGuard peer endpoint'
+    required: true
+  allowed-ips:
+    description: 'WireGuard peer allowed IPs'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install WireGuard
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wireguard
+
+    - name: Setup WireGuard private key
+      shell: bash
+      run: |
+        echo "${{ inputs.private-key }}" | sudo tee /etc/wireguard/private.key > /dev/null
+        sudo chmod 600 /etc/wireguard/private.key
+
+    - name: Setup WireGuard configuration
+      shell: bash
+      run: |
+        sudo tee /etc/wireguard/wg0.conf > /dev/null << EOF
+        [Interface]
+        Address = ${{ inputs.runner-address }}
+        PostUp = wg set %i private-key /etc/wireguard/private.key
+        DNS = ${{ inputs.dns }}
+
+        [Peer]
+        PublicKey = ${{ inputs.peer-public-key }}
+        Endpoint = ${{ inputs.peer-endpoint }}
+        AllowedIPs = ${{ inputs.allowed-ips }}
+        EOF
+
+        sudo chmod 600 /etc/wireguard/wg0.conf
+
+    - name: Start WireGuard connection
+      shell: bash
+      run: |
+        sudo wg-quick up wg0
+        echo "✓ WireGuard connection established"
+
+    - name: Verify WireGuard connection
+      shell: bash
+      run: |
+        echo "WireGuard interface status:"
+        sudo wg show
+
+        echo -e "\nInterface configuration:"
+        ip addr show wg0
+
+        echo -e "\nRouting table:"
+        ip route | grep wg0 || echo "No wg0 routes found"
