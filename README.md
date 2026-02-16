@@ -280,6 +280,35 @@ The bot uses file-based JSON storage in the `data` directory for:
 
 The bot uses a modular plugin system. Each feature is implemented as a separate plugin in the `plugins` directory. New functionality can be added by creating new plugin files.
 
+### Plugin Configuration
+
+Plugins can be selectively enabled or disabled using the `ENABLED_PLUGINS` environment variable. This is useful for:
+- Different deployment environments (e.g., production vs. staging)
+- Organization-specific configurations (e.g., Lullabot vs. Tugboat)
+- Testing individual plugins during development
+
+**Examples:**
+
+Enable only specific plugins:
+```bash
+ENABLED_PLUGINS=karma,factoids,help,uptime
+```
+
+Enable all plugins (default behavior):
+```bash
+# Don't set ENABLED_PLUGINS or leave it empty
+```
+
+**Available plugins:**
+- `karma` - Karma tracking system
+- `factoids` - Q&A storage and retrieval
+- `help` - Help and documentation
+- `uptime` - Bot uptime and identity
+- `botsnack` - Fun interactions
+- `hello` - Greeting responses
+- `conversions` - Unit conversions
+- `add-prompt` - Submit messages to prompt library
+
 ## Contributing
 
 1. Create a new plugin file in the `plugins` directory
@@ -382,6 +411,7 @@ This project uses environment variables for sensitive configuration:
 - `CLIENT_SIGNING_SECRET` - Slack app signing secret
 - `GITHUB_TOKEN` - GitHub Personal Access Token
 - `SLACK_SHARED_SECRET` - Shared secret for prompt library
+- `ENABLED_PLUGINS` (optional) - Comma-separated list of plugins to enable (e.g., `karma,factoids,help`). If not set, all plugins are enabled by default.
 
 ### Security Features
 
