@@ -1,4 +1,13 @@
-name: Deploy to production server
+# Example deploy workflow for application repositories.
+#
+# Copy this file to .github/workflows/deploy.yml in your application repo and
+# replace APP_NAME_HERE with the application name (e.g., gatus, noko-lsm).
+#
+# Required secret (set as an organization secret or per-repo):
+#   OPS_DEPLOY_TOKEN - A GitHub token with permission to send repository_dispatch
+#                      events to the Lullabot/ops repository.
+
+name: Deploy to Lullabot server
 
 on:
   push:
@@ -9,55 +18,35 @@ jobs:
   deploy:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Connect to WireGuard VPN
-        uses: ./.github/actions/wireguard-connect
-        with:
-          private-key: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
-          runner-address: ${{ secrets.WIREGUARD_RUNNER_ADDRESS }}
-          dns: ${{ secrets.WIREGUARD_DNS }}
-          peer-public-key: ${{ secrets.WIREGUARD_PUBLIC_KEY }}
-          peer-endpoint: ${{ secrets.WIREGUARD_ENDPOINT }}
-          allowed-ips: ${{ secrets.WIREGUARD_ALLOWED_IPS }}
-
-      - name: Setup SSH
+      - name: Trigger deployment via ops repo
+        env:
+          GH_TOKEN: ${{ secrets.OPS_DEPLOY_TOKEN }}
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+          gh api \
+            --method POST \
+            /repos/Lullabot/ops/dispatches \
+            -f "event_type=deploy" \
+            -f "client_payload[app]=slackbot" \
+            -f "client_payload[trigger_id]=${{ github.run_id }}"
 
-      - name: Pull latest code
+      - name: Find deploy workflow run
+        env:
+          GH_TOKEN: ${{ secrets.OPS_DEPLOY_TOKEN }}
         run: |
-          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
-            "cd /etc/docker/slackbot && sudo git pull"
+          echo "Waiting for deploy workflow to start..."
+          for i in $(seq 1 30); do
+            RUN_URL=$(gh api \
+              "/repos/Lullabot/ops/actions/runs?event=repository_dispatch&per_page=10" \
+              --jq ".workflow_runs[] | select(.name | contains(\"${{ github.run_id }}\")) | .html_url" \
+            )
+            if [[ -n "${RUN_URL}" ]]; then
+              echo "Deploy workflow started:"
+              echo "  ${RUN_URL}"
+              echo ""
+              echo "::notice::Deploy workflow: ${RUN_URL}"
+              exit 0
+            fi
+            sleep 2
+          done
 
-      - name: Pull latest Docker images
-        run: |
-          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
-            "cd /etc/docker/slackbot && sudo docker compose pull"
-
-      - name: Build containers
-        run: |
-          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
-            "cd /etc/docker/slackbot && sudo docker compose build"
-
-      - name: Restart application
-        run: |
-          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
-            "cd /etc/docker/slackbot && sudo docker compose down"
-          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
-            "cd /etc/docker/slackbot && sudo docker compose up -d"
-
-      - name: Verify deployment
-        run: |
-          ssh -i ~/.ssh/deploy_key deployer@${{ secrets.DEPLOY_HOST }} \
-            "cd /etc/docker/slackbot && sudo docker compose ps"
-
-      - name: Cleanup WireGuard configuration
-        if: always()
-        shell: bash
-        run: |
-          sudo rm -f /etc/wireguard/private.key /etc/wireguard/wg0.conf
+          echo "::warning::Could not find deploy workflow run. Check the ops repo Actions tab manually."
