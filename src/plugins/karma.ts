@@ -59,10 +59,10 @@ const karmaPlugin: Plugin = async (app: App): Promise<void> => {
     // Register karma patterns with the registry
     patternRegistry.registerPattern(/^karma\s+.+$/i, 'karma', 10);
     patternRegistry.registerPattern(/^karma$/i, 'karma', 10);
-    patternRegistry.registerPattern(/^\s*(<@[UW][A-Z0-9]+>|[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/, 'karma', 10);
+    patternRegistry.registerPattern(/^\s*(<@[UW][A-Z0-9]+>|(?!bananas?\b)[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/, 'karma', 10);
 
     // Give/take karma - only match single-word targets or @user mentions
-    app.message(/^\s*(<@[UW][A-Z0-9]+>|[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/, async ({ message, context, client, say }) => {
+    app.message(/^\s*(<@[UW][A-Z0-9]+>|(?!bananas?\b)[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/, async ({ message, context, client, say }) => {
         if (!context.matches) return;
         
         const msg = message as GenericMessageEvent;
