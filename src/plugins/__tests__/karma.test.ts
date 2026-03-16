@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 describe('Karma Plugin', () => {
-    const karmaRegex = /^\s*(<@[UW][A-Z0-9]+>|[\w][\w.-]*)(\+{2,}|-{2,})\s*$/;
+    const karmaRegex = /^\s*(<@[UW][A-Z0-9]+>|[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/;
 
     const shouldMatchPatterns = [
         'coffee++',
@@ -20,6 +20,10 @@ describe('Karma Plugin', () => {
         'a.b.c++',
         'sirkit++',
         'go++',
+        'coffee ++',
+        'coffee --',
+        '<@U12345> ++',
+        '<@U12345> --',
     ];
 
     const shouldNotMatchPatterns = [
@@ -28,6 +32,7 @@ describe('Karma Plugin', () => {
         'Check out C++',
         'Here is the url: https://example.com/path++',
         'good vibes++',
+        'good vibes ++',
         'check this: coffee++',
         '(coffee)++',
         'Hey everyone, lets go--',
