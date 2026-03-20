@@ -124,9 +124,20 @@ const karmaPlugin: Plugin = async (app: App): Promise<void> => {
                 karma.data[index] -= 1;
             }
 
+            // Big Banana sponsorship deal: Owen's karma is banana's karma
+            if (displayText.toLowerCase().includes('owen') && operation.includes('+')) {
+                karma.data['banana'] = (karma.data['banana'] || 0) + 1;
+            }
+
             await saveKarma(team, karma);
+
+            const responses = [`${displayText} has karma of ${karma.data[index]}`];
+            if (displayText.toLowerCase().includes('owen') && operation.includes('+')) {
+                responses.push(`banana has karma of ${karma.data['banana']} :banana:`);
+            }
+
             await say({
-                text: `${displayText} has karma of ${karma.data[index]}`,
+                text: responses.join('\n'),
                 ...(msg.thread_ts && { thread_ts: msg.thread_ts })
             });
         } catch (err) {
