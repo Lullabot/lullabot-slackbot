@@ -30,12 +30,14 @@ npm run clean        # Remove dist directory
 - **Plugin Loading**: Automatic discovery from `src/plugins/` directory
 - **Plugin Interface**: Each plugin exports a default function `(app: App) => Promise<void>`
 - **Environment Aware**: Loads `.ts` files in development, `.js` files in production
+- **Plugin Registry**: Control which plugins load via `ENABLED_PLUGINS` environment variable
 - **Error Handling**: Individual plugin failures don't crash the entire bot
 
 ### Core Components
 
 - **`src/bot.ts`**: Main entry point with plugin loader
 - **`src/plugins/`**: Individual feature modules (karma, factoids, help, etc.)
+- **`src/services/plugin-registry.ts`**: Controls which plugins are enabled/disabled
 - **`src/services/pattern-registry.ts`**: Centralized pattern management with priority system
 - **`src/types/index.ts`**: TypeScript interfaces for Plugin, Storage, Command, HelpSection
 - **`data/`**: JSON-based persistent storage (team-separated data files)
@@ -91,9 +93,16 @@ export default myPlugin;
 Required environment variables:
 
 - `BOT_TOKEN`: Slack Bot User OAuth Token (xoxb-)
-- `SLACK_APP_TOKEN`: App-level token (xapp-)  
+- `SLACK_APP_TOKEN`: App-level token (xapp-)
 - `CLIENT_SIGNING_SECRET`: Slack app signing secret
 - `NODE_ENV`: Set to 'production' for compiled JS, 'development' for ts-node
+
+Optional environment variables:
+
+- `ENABLED_PLUGINS`: Comma-separated list of plugins to load (e.g., `karma,factoids,help,uptime,botsnack,hello,conversions,add-prompt`)
+  - If not set, all plugins are enabled by default
+  - Use this to disable specific plugins for different deployments
+  - Example: `ENABLED_PLUGINS=karma,factoids,help` would only load those three plugins
 
 ## Data Persistence
 
