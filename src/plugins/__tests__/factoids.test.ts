@@ -124,6 +124,19 @@ describe('Factoids Plugin', () => {
             const match = '!factoid: search project journal'.match(searchPattern);
             expect(match?.[1]).toBe('project journal');
         });
+
+        it('should register the search pattern with the registry', () => {
+            expect(patternRegistry.registerPattern).toHaveBeenCalledWith(
+                /^!factoid:\s*search\s+(.+)$/i, 'factoids', 1
+            );
+        });
+
+        it('should register a message handler for the search pattern', () => {
+            const searchCall = (app.message as ReturnType<typeof vi.fn>).mock.calls.find(
+                (args: unknown[]) => args[0] instanceof RegExp && args[0].source.includes('search')
+            );
+            expect(searchCall).toBeDefined();
+        });
     });
 
     describe('Pattern Matching', () => {

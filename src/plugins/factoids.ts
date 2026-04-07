@@ -1254,14 +1254,23 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         const msg = message as GenericMessageEvent;
         const team = context.teamId || 'default';
         try {
-            const match = msg.text?.match(/^!factoid:\s*search\s+(.+)$/i);
-            if (!match) return;
-            const keyword = match[1].trim().toLowerCase();
+            const keywordMatch = context.matches?.[1];
+            if (!keywordMatch) return;
+            const keyword = keywordMatch.trim().toLowerCase();
+
+            if (!keyword) {
+                await say({
+                    text: 'Please provide a keyword to search for.',
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+                return;
+            }
 
             const factoids = await loadFacts(team);
-            const keys = Object.keys(factoids.data);
-            const matches = keys
-                .filter(key => key.toLowerCase().includes(keyword))
+            const MAX_SEARCH_RESULTS = 10;
+            const matches = Object.values(factoids.data)
+                .map(fact => fact.key)
+                .filter((key): key is string => Boolean(key) && key.toLowerCase().includes(keyword))
                 .sort();
 
             if (matches.length === 0) {
@@ -1272,13 +1281,20 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 return;
             }
 
+            const displayMatches = matches.slice(0, MAX_SEARCH_RESULTS);
+            const remaining = matches.length - displayMatches.length;
+
             let list: string;
-            if (matches.length === 1) {
-                list = matches[0];
-            } else if (matches.length === 2) {
-                list = `${matches[0]} and ${matches[1]}`;
+            if (displayMatches.length === 1) {
+                list = displayMatches[0];
+            } else if (displayMatches.length === 2) {
+                list = `${displayMatches[0]} and ${displayMatches[1]}`;
             } else {
-                list = `${matches.slice(0, -1).join(', ')}, and ${matches[matches.length - 1]}`;
+                list = `${displayMatches.slice(0, -1).join(', ')}, and ${displayMatches[displayMatches.length - 1]}`;
+            }
+
+            if (remaining > 0) {
+                list = `${list} (and ${remaining} more)`;
             }
 
             await say({
@@ -1288,7 +1304,7 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         } catch (error) {
             console.error('Error searching factoids:', error);
             await say({
-                text: `Error searching factoids: ${error}`,
+                text: 'Error searching factoids.',
                 thread_ts: msg.thread_ts || msg.ts
             });
         }
