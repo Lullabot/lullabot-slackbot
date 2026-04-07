@@ -1267,7 +1267,6 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
             }
 
             const factoids = await loadFacts(team);
-            const MAX_SEARCH_RESULTS = 10;
             const matches = Object.values(factoids.data)
                 .map(fact => fact.key)
                 .filter((key): key is string => Boolean(key) && key.toLowerCase().includes(keyword))
@@ -1281,20 +1280,13 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 return;
             }
 
-            const displayMatches = matches.slice(0, MAX_SEARCH_RESULTS);
-            const remaining = matches.length - displayMatches.length;
-
             let list: string;
-            if (displayMatches.length === 1) {
-                list = displayMatches[0];
-            } else if (displayMatches.length === 2) {
-                list = `${displayMatches[0]} and ${displayMatches[1]}`;
+            if (matches.length === 1) {
+                list = matches[0];
+            } else if (matches.length === 2) {
+                list = `${matches[0]} and ${matches[1]}`;
             } else {
-                list = `${displayMatches.slice(0, -1).join(', ')}, and ${displayMatches[displayMatches.length - 1]}`;
-            }
-
-            if (remaining > 0) {
-                list = `${list} (and ${remaining} more)`;
+                list = `${matches.slice(0, -1).join(', ')}, and ${matches[matches.length - 1]}`;
             }
 
             await say({
