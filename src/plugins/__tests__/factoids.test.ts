@@ -1,6 +1,6 @@
 import { App } from '@slack/bolt';
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import factoidsPlugin from '../factoids';
+import factoidsPlugin, { isValidFactoidKey } from '../factoids';
 import patternRegistry from '../../services/pattern-registry';
 
 // Mock dependencies
@@ -155,13 +155,7 @@ describe('Factoids Plugin', () => {
     });
 
     describe('Factoid Set Pattern Validation', () => {
-        // Validates the "X is Y" set pattern guards against conversational text
-        const isValidFactoidKey = (key: string): boolean => {
-            const wordCount = key.split(/\s+/).length;
-            if (wordCount > 5) return false;
-            if (/[,;:\-–—]|\.{2,}/.test(key)) return false;
-            return true;
-        };
+        // Tests use the exported isValidFactoidKey from the production code
 
         const validKeys = [
             'lullabot',
@@ -169,6 +163,8 @@ describe('Factoids Plugin', () => {
             'project journal',
             'the bot',
             '<@U12345>',
+            'foo-bar',
+            'my-hyphenated-thing',
         ];
 
         const invalidKeys = [
@@ -177,6 +173,7 @@ describe('Factoids Plugin', () => {
             'well... that',
             'hey: so the thing',
             'this is a really long factoid key that nobody would use',
+            'wait — hold on',
         ];
 
         describe('should accept valid factoid keys', () => {
