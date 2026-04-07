@@ -36,7 +36,8 @@ const helpText: HelpText = {
             { pattern: '!factoid: cleanup', description: 'Find and remove invalid factoids' },
             { pattern: '!factoid: backup', description: 'Create a backup of all factoids' },
             { pattern: '!factoid: backups', description: 'List available factoid backups' },
-            { pattern: '!factoid: restore FILENAME', description: 'Restore factoids from a backup file' }
+            { pattern: '!factoid: restore FILENAME', description: 'Restore factoids from a backup file' },
+            { pattern: '!factoid: search KEYWORD', description: 'Search factoids by keyword' }
         ]
     },
     karma: {

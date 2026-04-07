@@ -202,6 +202,7 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     patternRegistry.registerPattern(/^!factoid:\s*backup$/i, 'factoids', 1); // Add new backup command
     patternRegistry.registerPattern(/^!factoid:\s*restore\s+(.+)$/i, 'factoids', 1); // Add new restore command
     patternRegistry.registerPattern(/^!factoid:\s*backups$/i, 'factoids', 1); // Add command to list backups
+    patternRegistry.registerPattern(/^!factoid:\s*search\s+(.+)$/i, 'factoids', 1); // Search factoids by keyword
     // Two separate patterns for factoids - both lower priority than other commands
     patternRegistry.registerPattern(/^.+[!?]$/, 'factoids', 0.25); // Any text ending with ? or !
     
@@ -1245,6 +1246,51 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 replace_original: false
             });
             pendingRestoreRequests.delete(userId);
+        }
+    });
+
+    // Search factoids by keyword
+    app.message(/^!factoid:\s*search\s+(.+)$/i, async ({ message, say, context }) => {
+        const msg = message as GenericMessageEvent;
+        const team = context.teamId || 'default';
+        try {
+            const match = msg.text?.match(/^!factoid:\s*search\s+(.+)$/i);
+            if (!match) return;
+            const keyword = match[1].trim().toLowerCase();
+
+            const factoids = await loadFacts(team);
+            const keys = Object.keys(factoids.data);
+            const matches = keys
+                .filter(key => key.toLowerCase().includes(keyword))
+                .sort();
+
+            if (matches.length === 0) {
+                await say({
+                    text: `No factoids found matching '${keyword}'`,
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+                return;
+            }
+
+            let list: string;
+            if (matches.length === 1) {
+                list = matches[0];
+            } else if (matches.length === 2) {
+                list = `${matches[0]} and ${matches[1]}`;
+            } else {
+                list = `${matches.slice(0, -1).join(', ')}, and ${matches[matches.length - 1]}`;
+            }
+
+            await say({
+                text: `Found: ${list}`,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        } catch (error) {
+            console.error('Error searching factoids:', error);
+            await say({
+                text: `Error searching factoids: ${error}`,
+                thread_ts: msg.thread_ts || msg.ts
+            });
         }
     });
 
