@@ -648,9 +648,16 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         if (setMatches) {
             const team = context.teamId || 'default';
             const key = setMatches[1]?.trim();
-            
+
             if (!key) return;
-            
+
+            // Skip conversational text that isn't a valid factoid key:
+            // - Keys longer than 5 words are likely sentences, not factoid names
+            // - Keys containing punctuation like dashes, commas, or ellipses indicate conversation
+            const keyWordCount = key.split(/\s+/).length;
+            if (keyWordCount > 5) return;
+            if (/[,;:\-–—]|\.{2,}/.test(key)) return;
+
             // Skip if the key is a reserved command
             if (isReservedCommand(key)) return;
 

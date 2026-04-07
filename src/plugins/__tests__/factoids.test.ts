@@ -154,6 +154,48 @@ describe('Factoids Plugin', () => {
         });
     });
 
+    describe('Factoid Set Pattern Validation', () => {
+        // Validates the "X is Y" set pattern guards against conversational text
+        const isValidFactoidKey = (key: string): boolean => {
+            const wordCount = key.split(/\s+/).length;
+            if (wordCount > 5) return false;
+            if (/[,;:\-–—]|\.{2,}/.test(key)) return false;
+            return true;
+        };
+
+        const validKeys = [
+            'lullabot',
+            'drupal',
+            'project journal',
+            'the bot',
+            '<@U12345>',
+        ];
+
+        const invalidKeys = [
+            'i see - i think your premise',
+            'i think your premise, actually',
+            'well... that',
+            'hey: so the thing',
+            'this is a really long factoid key that nobody would use',
+        ];
+
+        describe('should accept valid factoid keys', () => {
+            validKeys.forEach(key => {
+                it(`should accept "${key}"`, () => {
+                    expect(isValidFactoidKey(key)).toBe(true);
+                });
+            });
+        });
+
+        describe('should reject conversational text as factoid keys', () => {
+            invalidKeys.forEach(key => {
+                it(`should reject "${key}"`, () => {
+                    expect(isValidFactoidKey(key)).toBe(false);
+                });
+            });
+        });
+    });
+
     describe('Slack Link Formatting', () => {
         // Test helper functions for escaping/unescaping Slack links
         const escapeSlackLinks = (text: string): string => {
