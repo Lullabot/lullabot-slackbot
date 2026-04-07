@@ -112,6 +112,15 @@ function decodeHtmlEntities(text: string): string {
                .replace(/&#39;/g, "'");
 }
 
+// Validate that a factoid key looks like a factoid name, not conversational text
+export function isValidFactoidKey(key: string): boolean {
+    const wordCount = key.split(/\s+/).length;
+    if (wordCount > 5) return false;
+    if (/[,;:]|\.{2,}/.test(key)) return false;
+    if (/(?:\s[-–—]|[-–—]\s)/.test(key)) return false;
+    return true;
+}
+
 // Replace the isReservedCommand function with this simplified version
 function isReservedCommand(text: string): boolean {
     // Check if the text matches any registered pattern from other plugins
@@ -648,9 +657,12 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         if (setMatches) {
             const team = context.teamId || 'default';
             const key = setMatches[1]?.trim();
-            
+
             if (!key) return;
-            
+
+            // Skip conversational text that isn't a valid factoid key
+            if (!isValidFactoidKey(key)) return;
+
             // Skip if the key is a reserved command
             if (isReservedCommand(key)) return;
 

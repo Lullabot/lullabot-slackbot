@@ -1,6 +1,6 @@
 import { App } from '@slack/bolt';
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import factoidsPlugin from '../factoids';
+import factoidsPlugin, { isValidFactoidKey } from '../factoids';
 import patternRegistry from '../../services/pattern-registry';
 
 // Mock dependencies
@@ -150,6 +150,45 @@ describe('Factoids Plugin', () => {
             console.log('\nPatterns that should NOT match:');
             shouldNotMatchPatterns.forEach(pattern => {
                 console.log(`"${pattern}" => ${shouldTriggerFactoid(pattern)}`);
+            });
+        });
+    });
+
+    describe('Factoid Set Pattern Validation', () => {
+        // Tests use the exported isValidFactoidKey from the production code
+
+        const validKeys = [
+            'lullabot',
+            'drupal',
+            'project journal',
+            'the bot',
+            '<@U12345>',
+            'foo-bar',
+            'my-hyphenated-thing',
+        ];
+
+        const invalidKeys = [
+            'i see - i think your premise',
+            'i think your premise, actually',
+            'well... that',
+            'hey: so the thing',
+            'this is a really long factoid key that nobody would use',
+            'wait — hold on',
+        ];
+
+        describe('should accept valid factoid keys', () => {
+            validKeys.forEach(key => {
+                it(`should accept "${key}"`, () => {
+                    expect(isValidFactoidKey(key)).toBe(true);
+                });
+            });
+        });
+
+        describe('should reject conversational text as factoid keys', () => {
+            invalidKeys.forEach(key => {
+                it(`should reject "${key}"`, () => {
+                    expect(isValidFactoidKey(key)).toBe(false);
+                });
             });
         });
     });
