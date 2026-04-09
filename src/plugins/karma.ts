@@ -59,10 +59,10 @@ const karmaPlugin: Plugin = async (app: App): Promise<void> => {
     // Register karma patterns with the registry
     patternRegistry.registerPattern(/^karma\s+.+$/i, 'karma', 10);
     patternRegistry.registerPattern(/^karma$/i, 'karma', 10);
-    patternRegistry.registerPattern(/^\s*(<@[UW][A-Z0-9]+>|[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/, 'karma', 10);
+    patternRegistry.registerPattern(/^\s*(<@[UW][A-Z0-9]+>|(?!bananas?\b)[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/, 'karma', 10);
 
     // Give/take karma - only match single-word targets or @user mentions
-    app.message(/^\s*(<@[UW][A-Z0-9]+>|[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/, async ({ message, context, client, say }) => {
+    app.message(/^\s*(<@[UW][A-Z0-9]+>|(?!bananas?\b)[\w][\w.-]*)\s*(\+{2,}|-{2,})\s*$/, async ({ message, context, client, say }) => {
         if (!context.matches) return;
         
         const msg = message as GenericMessageEvent;
@@ -124,9 +124,20 @@ const karmaPlugin: Plugin = async (app: App): Promise<void> => {
                 karma.data[index] -= 1;
             }
 
+            // Big Banana sponsorship deal: Owen's karma is banana's karma
+            if (displayText.toLowerCase().includes('owen') && operation.includes('+')) {
+                karma.data['banana'] = (karma.data['banana'] || 0) + 1;
+            }
+
             await saveKarma(team, karma);
+
+            const responses = [`${displayText} has karma of ${karma.data[index]}`];
+            if (displayText.toLowerCase().includes('owen') && operation.includes('+')) {
+                responses.push(`banana has karma of ${karma.data['banana']} :banana:`);
+            }
+
             await say({
-                text: `${displayText} has karma of ${karma.data[index]}`,
+                text: responses.join('\n'),
                 ...(msg.thread_ts && { thread_ts: msg.thread_ts })
             });
         } catch (err) {
