@@ -1,4 +1,5 @@
 import { App } from '@slack/bolt';
+import * as fs from 'fs';
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import factoidsPlugin, { isValidFactoidKey } from '../factoids';
 import patternRegistry from '../../services/pattern-registry';
@@ -99,6 +100,56 @@ describe('Factoids Plugin', () => {
     describe('Search Command Pattern', () => {
         const searchPattern = /^!factoid:\s*search\s+(.+)$/i;
 
+        const getSearchHandler = () => {
+            const searchCall = (app.message as ReturnType<typeof vi.fn>).mock.calls.find(
+                (args: unknown[]) => args[0] instanceof RegExp && args[0].source.includes('search')
+            );
+            expect(searchCall).toBeDefined();
+            return searchCall?.[1] as Function;
+        };
+
+        const mockFactoids = () => {
+            vi.mocked(fs.promises.readFile).mockResolvedValue(JSON.stringify({
+                id: 'T123_factoids',
+                data: {
+                    'joe key': {
+                        key: 'joe key',
+                        be: 'is',
+                        reply: true,
+                        value: ['a value without the term']
+                    },
+                    gif: {
+                        key: 'gif',
+                        be: 'is',
+                        reply: true,
+                        value: ['https://media.giphy.com/joe.gif']
+                    },
+                    unrelated: {
+                        key: 'unrelated',
+                        be: 'is',
+                        reply: true,
+                        value: ['nothing to see here']
+                    }
+                }
+            }));
+        };
+
+        const runSearch = async (keyword: string) => {
+            const say = vi.fn();
+            const handler = getSearchHandler();
+
+            await handler({
+                message: { ts: '123.456' },
+                say,
+                context: {
+                    teamId: 'T123',
+                    matches: [`!factoid: search ${keyword}`, keyword]
+                }
+            });
+
+            return say;
+        };
+
         it('should match "!factoid: search journal"', () => {
             expect(searchPattern.test('!factoid: search journal')).toBe(true);
         });
@@ -136,6 +187,39 @@ describe('Factoids Plugin', () => {
                 (args: unknown[]) => args[0] instanceof RegExp && args[0].source.includes('search')
             );
             expect(searchCall).toBeDefined();
+        });
+
+        it('should find factoids with matching keys', async () => {
+            mockFactoids();
+
+            const say = await runSearch('joe key');
+
+            expect(say).toHaveBeenCalledWith({
+                text: 'Found: joe key',
+                thread_ts: '123.456'
+            });
+        });
+
+        it('should find factoids with matching values', async () => {
+            mockFactoids();
+
+            const say = await runSearch('joe');
+
+            expect(say).toHaveBeenCalledWith({
+                text: 'Found: gif and joe key',
+                thread_ts: '123.456'
+            });
+        });
+
+        it('should report when neither keys nor values match', async () => {
+            mockFactoids();
+
+            const say = await runSearch('missing');
+
+            expect(say).toHaveBeenCalledWith({
+                text: "No factoids found matching 'missing'",
+                thread_ts: '123.456'
+            });
         });
     });
 

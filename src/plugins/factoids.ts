@@ -1268,8 +1268,13 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
 
             const factoids = await loadFacts(team);
             const matches = Object.values(factoids.data)
+                .filter(fact => {
+                    const keyMatches = Boolean(fact.key) && fact.key.toLowerCase().includes(keyword);
+                    const valueMatches = (fact.value || []).join(' ').toLowerCase().includes(keyword);
+                    return keyMatches || valueMatches;
+                })
                 .map(fact => fact.key)
-                .filter((key): key is string => Boolean(key) && key.toLowerCase().includes(keyword))
+                .filter((key): key is string => Boolean(key))
                 .sort();
 
             if (matches.length === 0) {
