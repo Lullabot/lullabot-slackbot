@@ -1,212 +1,165 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PluginRegistry } from '../plugin-registry';
+
+const ALL_PLUGINS = [
+    'karma.ts',
+    'factoids.ts',
+    'help.ts',
+    'uptime.ts',
+    'botsnack.ts',
+    'hello.ts',
+    'conversions.ts',
+    'add-prompt.ts',
+];
 
 describe('Plugin Registry Service', () => {
     let originalEnv: string | undefined;
 
     beforeEach(() => {
         // Save original environment variable
-        originalEnv = process.env.ENABLED_PLUGINS;
+        originalEnv = process.env.DISABLED_PLUGINS;
     });
 
     afterEach(() => {
         // Restore original environment variable
         if (originalEnv === undefined) {
-            delete process.env.ENABLED_PLUGINS;
+            delete process.env.DISABLED_PLUGINS;
         } else {
-            process.env.ENABLED_PLUGINS = originalEnv;
+            process.env.DISABLED_PLUGINS = originalEnv;
         }
+        vi.restoreAllMocks();
     });
 
-    describe('When ENABLED_PLUGINS is not set', () => {
+    describe('When DISABLED_PLUGINS is not set', () => {
         it('should enable all plugins by default', () => {
-            delete process.env.ENABLED_PLUGINS;
+            delete process.env.DISABLED_PLUGINS;
             const registry = new PluginRegistry();
 
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-            expect(registry.isPluginEnabled('help.ts')).toBe(true);
-            expect(registry.isPluginEnabled('uptime.ts')).toBe(true);
-            expect(registry.isPluginEnabled('botsnack.ts')).toBe(true);
-            expect(registry.isPluginEnabled('hello.ts')).toBe(true);
-            expect(registry.isPluginEnabled('conversions.ts')).toBe(true);
-            expect(registry.isPluginEnabled('add-prompt.ts')).toBe(true);
-        });
-
-        it('should return null for getEnabledPlugins', () => {
-            delete process.env.ENABLED_PLUGINS;
-            const registry = new PluginRegistry();
-
-            expect(registry.getEnabledPlugins()).toBeNull();
-        });
-
-        it('should enable even non-existent plugin names', () => {
-            delete process.env.ENABLED_PLUGINS;
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('nonexistent.ts')).toBe(true);
-        });
-    });
-
-    describe('When ENABLED_PLUGINS is set to specific plugins', () => {
-        it('should enable only specified plugins', () => {
-            process.env.ENABLED_PLUGINS = 'karma,factoids,help';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-            expect(registry.isPluginEnabled('help.ts')).toBe(true);
-            expect(registry.isPluginEnabled('uptime.ts')).toBe(false);
-            expect(registry.isPluginEnabled('botsnack.ts')).toBe(false);
-        });
-
-        it('should return array of enabled plugins', () => {
-            process.env.ENABLED_PLUGINS = 'karma,factoids,help';
-            const registry = new PluginRegistry();
-
-            const enabled = registry.getEnabledPlugins();
-            expect(enabled).toEqual(['karma', 'factoids', 'help']);
-        });
-    });
-
-    describe('When ENABLED_PLUGINS has whitespace', () => {
-        it('should trim whitespace from plugin names', () => {
-            process.env.ENABLED_PLUGINS = ' karma , factoids , help ';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-            expect(registry.isPluginEnabled('help.ts')).toBe(true);
-        });
-
-        it('should handle extra whitespace gracefully', () => {
-            process.env.ENABLED_PLUGINS = '  karma  ,  factoids  ,  help  ';
-            const registry = new PluginRegistry();
-
-            const enabled = registry.getEnabledPlugins();
-            expect(enabled).toEqual(['karma', 'factoids', 'help']);
-        });
-    });
-
-    describe('When ENABLED_PLUGINS is empty string', () => {
-        it('should enable all plugins like when not set', () => {
-            process.env.ENABLED_PLUGINS = '';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-            expect(registry.getEnabledPlugins()).toBeNull();
-        });
-    });
-
-    describe('File extension handling', () => {
-        it('should work with .ts extension', () => {
-            process.env.ENABLED_PLUGINS = 'karma,factoids';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-        });
-
-        it('should work with .js extension', () => {
-            process.env.ENABLED_PLUGINS = 'karma,factoids';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.js')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.js')).toBe(true);
-        });
-
-        it('should work without extension', () => {
-            process.env.ENABLED_PLUGINS = 'karma,factoids';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma')).toBe(true);
-            expect(registry.isPluginEnabled('factoids')).toBe(true);
-        });
-    });
-
-    describe('Edge cases', () => {
-        it('should handle single plugin', () => {
-            process.env.ENABLED_PLUGINS = 'karma';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(false);
-            expect(registry.getEnabledPlugins()).toEqual(['karma']);
-        });
-
-        it('should handle trailing comma', () => {
-            process.env.ENABLED_PLUGINS = 'karma,factoids,';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-            expect(registry.getEnabledPlugins()).toEqual(['karma', 'factoids']);
-        });
-
-        it('should handle leading comma', () => {
-            process.env.ENABLED_PLUGINS = ',karma,factoids';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-            expect(registry.getEnabledPlugins()).toEqual(['karma', 'factoids']);
-        });
-
-        it('should handle multiple consecutive commas', () => {
-            process.env.ENABLED_PLUGINS = 'karma,,factoids';
-            const registry = new PluginRegistry();
-
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-            expect(registry.getEnabledPlugins()).toEqual(['karma', 'factoids']);
-        });
-    });
-
-    describe('Real-world scenarios', () => {
-        it('should support Lullabot full deployment (all plugins)', () => {
-            delete process.env.ENABLED_PLUGINS;
-            const registry = new PluginRegistry();
-
-            // All current plugins should be enabled
-            const allPlugins = [
-                'karma.ts',
-                'factoids.ts',
-                'help.ts',
-                'uptime.ts',
-                'botsnack.ts',
-                'hello.ts',
-                'conversions.ts',
-                'add-prompt.ts'
-            ];
-
-            allPlugins.forEach(plugin => {
+            ALL_PLUGINS.forEach(plugin => {
                 expect(registry.isPluginEnabled(plugin)).toBe(true);
             });
         });
 
-        it('should support Tugboat limited deployment (no add-prompt)', () => {
-            process.env.ENABLED_PLUGINS = 'karma,factoids,help,uptime,botsnack,hello,conversions';
+        it('should return an empty array for getDisabledPlugins', () => {
+            delete process.env.DISABLED_PLUGINS;
             const registry = new PluginRegistry();
 
-            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
-            expect(registry.isPluginEnabled('help.ts')).toBe(true);
-            expect(registry.isPluginEnabled('uptime.ts')).toBe(true);
-            expect(registry.isPluginEnabled('botsnack.ts')).toBe(true);
-            expect(registry.isPluginEnabled('hello.ts')).toBe(true);
-            expect(registry.isPluginEnabled('conversions.ts')).toBe(true);
-            expect(registry.isPluginEnabled('add-prompt.ts')).toBe(false);
+            expect(registry.getDisabledPlugins()).toEqual([]);
         });
 
-        it('should support development testing (minimal plugins)', () => {
-            process.env.ENABLED_PLUGINS = 'help,uptime';
+        it('should enable plugins added in the future without config changes', () => {
+            delete process.env.DISABLED_PLUGINS;
             const registry = new PluginRegistry();
 
-            expect(registry.isPluginEnabled('help.ts')).toBe(true);
-            expect(registry.isPluginEnabled('uptime.ts')).toBe(true);
+            expect(registry.isPluginEnabled('brand-new-plugin.ts')).toBe(true);
+        });
+    });
+
+    describe('When DISABLED_PLUGINS is set', () => {
+        it('should disable only the listed plugins', () => {
+            process.env.DISABLED_PLUGINS = 'add-prompt,conversions';
+            const registry = new PluginRegistry();
+
+            expect(registry.isPluginEnabled('add-prompt.ts')).toBe(false);
+            expect(registry.isPluginEnabled('conversions.ts')).toBe(false);
+            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
+            expect(registry.isPluginEnabled('factoids.ts')).toBe(true);
+        });
+
+        it('should return array of disabled plugins', () => {
+            process.env.DISABLED_PLUGINS = 'add-prompt,conversions';
+            const registry = new PluginRegistry();
+
+            expect(registry.getDisabledPlugins()).toEqual(['add-prompt', 'conversions']);
+        });
+    });
+
+    describe('When DISABLED_PLUGINS has whitespace or messy formatting', () => {
+        it('should trim whitespace and ignore empty entries', () => {
+            process.env.DISABLED_PLUGINS = ' add-prompt , , conversions , ';
+            const registry = new PluginRegistry();
+
+            expect(registry.getDisabledPlugins()).toEqual(['add-prompt', 'conversions']);
+            expect(registry.isPluginEnabled('add-prompt.ts')).toBe(false);
+            expect(registry.isPluginEnabled('conversions.ts')).toBe(false);
+            expect(registry.isPluginEnabled('karma.ts')).toBe(true);
+        });
+    });
+
+    describe('When DISABLED_PLUGINS is an empty string', () => {
+        it('should enable all plugins like when not set', () => {
+            process.env.DISABLED_PLUGINS = '';
+            const registry = new PluginRegistry();
+
+            ALL_PLUGINS.forEach(plugin => {
+                expect(registry.isPluginEnabled(plugin)).toBe(true);
+            });
+            expect(registry.getDisabledPlugins()).toEqual([]);
+        });
+    });
+
+    describe('File extension handling', () => {
+        it('should match regardless of .ts, .js, or no extension', () => {
+            process.env.DISABLED_PLUGINS = 'karma';
+            const registry = new PluginRegistry();
+
             expect(registry.isPluginEnabled('karma.ts')).toBe(false);
-            expect(registry.isPluginEnabled('factoids.ts')).toBe(false);
+            expect(registry.isPluginEnabled('karma.js')).toBe(false);
+            expect(registry.isPluginEnabled('karma')).toBe(false);
+        });
+    });
+
+    describe('warnUnknownPlugins', () => {
+        it('should warn for entries that do not match any known plugin', () => {
+            process.env.DISABLED_PLUGINS = 'factiods'; // typo of factoids
+            const registry = new PluginRegistry();
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            registry.warnUnknownPlugins(ALL_PLUGINS);
+
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn.mock.calls[0][0]).toContain('factiods');
+        });
+
+        it('should not warn when all disabled plugins are known', () => {
+            process.env.DISABLED_PLUGINS = 'add-prompt,conversions';
+            const registry = new PluginRegistry();
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            registry.warnUnknownPlugins(ALL_PLUGINS);
+
+            expect(warn).not.toHaveBeenCalled();
+        });
+
+        it('should not warn when nothing is disabled', () => {
+            delete process.env.DISABLED_PLUGINS;
+            const registry = new PluginRegistry();
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            registry.warnUnknownPlugins(ALL_PLUGINS);
+
+            expect(warn).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Real-world scenarios', () => {
+        it('should support Lullabot full deployment (nothing disabled)', () => {
+            delete process.env.DISABLED_PLUGINS;
+            const registry = new PluginRegistry();
+
+            ALL_PLUGINS.forEach(plugin => {
+                expect(registry.isPluginEnabled(plugin)).toBe(true);
+            });
+        });
+
+        it('should support Tugboat deployment (add-prompt disabled)', () => {
+            process.env.DISABLED_PLUGINS = 'add-prompt';
+            const registry = new PluginRegistry();
+
+            expect(registry.isPluginEnabled('add-prompt.ts')).toBe(false);
+            ALL_PLUGINS.filter(p => p !== 'add-prompt.ts').forEach(plugin => {
+                expect(registry.isPluginEnabled(plugin)).toBe(true);
+            });
         });
     });
 });

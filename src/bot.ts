@@ -32,6 +32,9 @@ const loadPlugins = async (app: App): Promise<void> => {
 
     console.log(`Found ${pluginFiles.length} plugins to load:`, pluginFiles);
 
+    // Warn about any DISABLED_PLUGINS entries that don't match a real plugin
+    pluginRegistry.warnUnknownPlugins(pluginFiles);
+
     // Load each plugin
     for (const file of pluginFiles) {
         // Check if plugin is enabled via registry

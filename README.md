@@ -282,22 +282,24 @@ The bot uses a modular plugin system. Each feature is implemented as a separate 
 
 ### Plugin Configuration
 
-Plugins can be selectively enabled or disabled using the `ENABLED_PLUGINS` environment variable. This is useful for:
+Plugins can be selectively disabled using the `DISABLED_PLUGINS` environment variable. This is a **deny-list**: every plugin loads unless you list it here, so newly added plugins are enabled automatically without touching each deployment's config. This is useful for:
 - Different deployment environments (e.g., production vs. staging)
 - Organization-specific configurations (e.g., Lullabot vs. Tugboat)
-- Testing individual plugins during development
+- Testing without a specific plugin during development
 
 **Examples:**
 
-Enable only specific plugins:
+Disable specific plugins:
 ```bash
-ENABLED_PLUGINS=karma,factoids,help,uptime
+DISABLED_PLUGINS=add-prompt,conversions
 ```
 
 Enable all plugins (default behavior):
 ```bash
-# Don't set ENABLED_PLUGINS or leave it empty
+# Don't set DISABLED_PLUGINS or leave it empty
 ```
+
+Any name in `DISABLED_PLUGINS` that doesn't match a real plugin is logged as a warning at startup, so typos don't silently do nothing.
 
 **Available plugins:**
 - `karma` - Karma tracking system
@@ -411,7 +413,7 @@ This project uses environment variables for sensitive configuration:
 - `CLIENT_SIGNING_SECRET` - Slack app signing secret
 - `GITHUB_TOKEN` - GitHub Personal Access Token
 - `SLACK_SHARED_SECRET` - Shared secret for prompt library
-- `ENABLED_PLUGINS` (optional) - Comma-separated list of plugins to enable (e.g., `karma,factoids,help`). If not set, all plugins are enabled by default.
+- `DISABLED_PLUGINS` (optional) - Comma-separated list of plugins to disable (e.g., `add-prompt,conversions`). If not set, all plugins are enabled by default.
 
 ### Security Features
 

@@ -30,7 +30,7 @@ npm run clean        # Remove dist directory
 - **Plugin Loading**: Automatic discovery from `src/plugins/` directory
 - **Plugin Interface**: Each plugin exports a default function `(app: App) => Promise<void>`
 - **Environment Aware**: Loads `.ts` files in development, `.js` files in production
-- **Plugin Registry**: Control which plugins load via `ENABLED_PLUGINS` environment variable
+- **Plugin Registry**: Disable specific plugins via the `DISABLED_PLUGINS` environment variable (deny-list; all load by default)
 - **Error Handling**: Individual plugin failures don't crash the entire bot
 
 ### Core Components
@@ -99,10 +99,11 @@ Required environment variables:
 
 Optional environment variables:
 
-- `ENABLED_PLUGINS`: Comma-separated list of plugins to load (e.g., `karma,factoids,help,uptime,botsnack,hello,conversions,add-prompt`)
-  - If not set, all plugins are enabled by default
-  - Use this to disable specific plugins for different deployments
-  - Example: `ENABLED_PLUGINS=karma,factoids,help` would only load those three plugins
+- `DISABLED_PLUGINS`: Comma-separated list of plugins to disable (deny-list)
+  - If not set or empty, all plugins are enabled by default
+  - New plugins load automatically — you only list the ones to turn off
+  - Unknown names (typos) are logged as a warning at startup
+  - Example: `DISABLED_PLUGINS=add-prompt` loads everything except `add-prompt`
 
 ## Data Persistence
 
