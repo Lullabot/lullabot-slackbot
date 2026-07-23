@@ -1,6 +1,30 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "schedule:earlyMondays",
+    ":gitSignOff"
+  ],
+  "timezone": "America/New_York",
+  "prConcurrentLimit": 10,
+  "reviewers": ["sirkitree"],
+  "assignees": ["sirkitree"],
+  "commitMessagePrefix": "chore(deps):",
+  "packageRules": [
+    {
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "development-dependencies",
+      "commitMessagePrefix": "chore(deps):"
+    },
+    {
+      "matchDepTypes": ["dependencies"],
+      "groupName": "production-dependencies",
+      "commitMessagePrefix": "chore(deps):"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "commitMessagePrefix": "ci:"
+    }
   ]
 }

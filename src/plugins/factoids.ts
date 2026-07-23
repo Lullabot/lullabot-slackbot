@@ -112,6 +112,15 @@ function decodeHtmlEntities(text: string): string {
                .replace(/&#39;/g, "'");
 }
 
+// Validate that a factoid key looks like a factoid name, not conversational text
+export function isValidFactoidKey(key: string): boolean {
+    const wordCount = key.split(/\s+/).length;
+    if (wordCount > 5) return false;
+    if (/[,;:]|\.{2,}/.test(key)) return false;
+    if (/(?:\s[-–—]|[-–—]\s)/.test(key)) return false;
+    return true;
+}
+
 // Replace the isReservedCommand function with this simplified version
 function isReservedCommand(text: string): boolean {
     // Check if the text matches any registered pattern from other plugins
@@ -153,6 +162,18 @@ function unescapeReply(text: string): string {
     return text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
 
+// Escape Slack link formatting for display in modal inputs
+// Converts <URL|Text> to {URL|Text} to prevent Slack from rendering it
+function escapeSlackLinks(text: string): string {
+    return text.replace(/<(https?:\/\/[^>|]+)(\|[^>]+)?>/g, '{$1$2}');
+}
+
+// Restore Slack link formatting from escaped format
+// Converts {URL|Text} back to <URL|Text>
+function unescapeSlackLinks(text: string): string {
+    return text.replace(/\{(https?:\/\/[^}|]+)(\|[^}]+)?\}/g, '<$1$2>');
+}
+
 // Utility to check and normalize reply factoids
 function normalizeReplyFactoid(values: string[]): { values: string[], reply: boolean } {
     let reply = false;
@@ -181,6 +202,7 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
     patternRegistry.registerPattern(/^!factoid:\s*backup$/i, 'factoids', 1); // Add new backup command
     patternRegistry.registerPattern(/^!factoid:\s*restore\s+(.+)$/i, 'factoids', 1); // Add new restore command
     patternRegistry.registerPattern(/^!factoid:\s*backups$/i, 'factoids', 1); // Add command to list backups
+    patternRegistry.registerPattern(/^!factoid:\s*search\s+(.+)$/i, 'factoids', 1); // Search factoids by keyword
     // Two separate patterns for factoids - both lower priority than other commands
     patternRegistry.registerPattern(/^.+[!?]$/, 'factoids', 0.25); // Any text ending with ? or !
     
@@ -636,9 +658,12 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         if (setMatches) {
             const team = context.teamId || 'default';
             const key = setMatches[1]?.trim();
-            
+
             if (!key) return;
-            
+
+            // Skip conversational text that isn't a valid factoid key
+            if (!isValidFactoidKey(key)) return;
+
             // Skip if the key is a reserved command
             if (isReservedCommand(key)) return;
 
@@ -1224,6 +1249,64 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         }
     });
 
+    // Search factoids by keyword
+    app.message(/^!factoid:\s*search\s+(.+)$/i, async ({ message, say, context }) => {
+        const msg = message as GenericMessageEvent;
+        const team = context.teamId || 'default';
+        try {
+            const keywordMatch = context.matches?.[1];
+            if (!keywordMatch) return;
+            const keyword = keywordMatch.trim().toLowerCase();
+
+            if (!keyword) {
+                await say({
+                    text: 'Please provide a keyword to search for.',
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+                return;
+            }
+
+            const factoids = await loadFacts(team);
+            const matches = Object.values(factoids.data)
+                .filter(fact => {
+                    const keyMatches = Boolean(fact.key) && fact.key.toLowerCase().includes(keyword);
+                    const valueMatches = (fact.value || []).join(' ').toLowerCase().includes(keyword);
+                    return keyMatches || valueMatches;
+                })
+                .map(fact => fact.key)
+                .filter((key): key is string => Boolean(key))
+                .sort();
+
+            if (matches.length === 0) {
+                await say({
+                    text: `No factoids found matching '${keyword}'`,
+                    thread_ts: msg.thread_ts || msg.ts
+                });
+                return;
+            }
+
+            let list: string;
+            if (matches.length === 1) {
+                list = matches[0];
+            } else if (matches.length === 2) {
+                list = `${matches[0]} and ${matches[1]}`;
+            } else {
+                list = `${matches.slice(0, -1).join(', ')}, and ${matches[matches.length - 1]}`;
+            }
+
+            await say({
+                text: `Found: ${list}`,
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        } catch (error) {
+            console.error('Error searching factoids:', error);
+            await say({
+                text: 'Error searching factoids.',
+                thread_ts: msg.thread_ts || msg.ts
+            });
+        }
+    });
+
     // Block Kit action handler stubs for interactive factoid list
     app.action('factoid_page_prev', async ({ ack, body, action, client, context }) => {
         await ack();
@@ -1283,7 +1366,7 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                 }
             });
         } else if (act === 'edit') {
-            // Open edit modal, always unescape <reply>
+            // Open edit modal, always unescape <reply> and escape Slack links
             await client.views.open({
                 trigger_id: (body as any).trigger_id,
                 view: {
@@ -1301,7 +1384,7 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
                             element: {
                                 type: 'plain_text_input',
                                 action_id: 'value',
-                                initial_value: fact.value.map(unescapeReply).join(' | '),
+                                initial_value: fact.value.map(v => escapeSlackLinks(unescapeReply(v))).join(' | '),
                                 multiline: true
                             }
                         },
@@ -1359,8 +1442,8 @@ const factoidsPlugin: Plugin = async (app: App): Promise<void> => {
         const valueInput = values['factoid_value']?.['value']?.value;
         const previewInput = values['factoid_preview']?.['preview']?.selected_option?.value;
         if (typeof valueInput === 'string' && typeof previewInput === 'string') {
-            // Always unescape and normalize before saving
-            const splitValues = valueInput.split('|').map(v => unescapeReply(v.trim())).filter(Boolean);
+            // Always unescape Slack links, unescape HTML entities, and normalize before saving
+            const splitValues = valueInput.split('|').map(v => unescapeSlackLinks(unescapeReply(v.trim()))).filter(Boolean);
             const { values: newValues, reply } = normalizeReplyFactoid(splitValues);
             const previewLinks = previewInput === 'preview';
             const factoids = await loadFacts(team);

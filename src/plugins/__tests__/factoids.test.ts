@@ -1,6 +1,7 @@
 import { App } from '@slack/bolt';
+import * as fs from 'fs';
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import factoidsPlugin from '../factoids';
+import factoidsPlugin, { isValidFactoidKey } from '../factoids';
 import patternRegistry from '../../services/pattern-registry';
 
 // Mock dependencies
@@ -96,6 +97,132 @@ describe('Factoids Plugin', () => {
         });
     });
     
+    describe('Search Command Pattern', () => {
+        const searchPattern = /^!factoid:\s*search\s+(.+)$/i;
+
+        const getSearchHandler = () => {
+            const searchCall = (app.message as ReturnType<typeof vi.fn>).mock.calls.find(
+                (args: unknown[]) => args[0] instanceof RegExp && args[0].source.includes('search')
+            );
+            expect(searchCall).toBeDefined();
+            return searchCall?.[1] as Function;
+        };
+
+        const mockFactoids = () => {
+            vi.mocked(fs.promises.readFile).mockResolvedValue(JSON.stringify({
+                id: 'T123_factoids',
+                data: {
+                    'joe key': {
+                        key: 'joe key',
+                        be: 'is',
+                        reply: true,
+                        value: ['a value without the term']
+                    },
+                    gif: {
+                        key: 'gif',
+                        be: 'is',
+                        reply: true,
+                        value: ['https://media.giphy.com/joe.gif']
+                    },
+                    unrelated: {
+                        key: 'unrelated',
+                        be: 'is',
+                        reply: true,
+                        value: ['nothing to see here']
+                    }
+                }
+            }));
+        };
+
+        const runSearch = async (keyword: string) => {
+            const say = vi.fn();
+            const handler = getSearchHandler();
+
+            await handler({
+                message: { ts: '123.456' },
+                say,
+                context: {
+                    teamId: 'T123',
+                    matches: [`!factoid: search ${keyword}`, keyword]
+                }
+            });
+
+            return say;
+        };
+
+        it('should match "!factoid: search journal"', () => {
+            expect(searchPattern.test('!factoid: search journal')).toBe(true);
+        });
+
+        it('should match "!factoid: search foo bar"', () => {
+            expect(searchPattern.test('!factoid: search foo bar')).toBe(true);
+        });
+
+        it('should match case-insensitively', () => {
+            expect(searchPattern.test('!Factoid: Search Journal')).toBe(true);
+        });
+
+        it('should NOT match without a keyword', () => {
+            expect(searchPattern.test('!factoid: search')).toBe(false);
+        });
+
+        it('should capture the keyword', () => {
+            const match = '!factoid: search journal'.match(searchPattern);
+            expect(match?.[1]).toBe('journal');
+        });
+
+        it('should capture multi-word keywords', () => {
+            const match = '!factoid: search project journal'.match(searchPattern);
+            expect(match?.[1]).toBe('project journal');
+        });
+
+        it('should register the search pattern with the registry', () => {
+            expect(patternRegistry.registerPattern).toHaveBeenCalledWith(
+                /^!factoid:\s*search\s+(.+)$/i, 'factoids', 1
+            );
+        });
+
+        it('should register a message handler for the search pattern', () => {
+            const searchCall = (app.message as ReturnType<typeof vi.fn>).mock.calls.find(
+                (args: unknown[]) => args[0] instanceof RegExp && args[0].source.includes('search')
+            );
+            expect(searchCall).toBeDefined();
+        });
+
+        it('should find factoids with matching keys', async () => {
+            mockFactoids();
+
+            const say = await runSearch('joe key');
+
+            expect(say).toHaveBeenCalledWith({
+                text: 'Found: joe key',
+                thread_ts: '123.456'
+            });
+        });
+
+        it('should find factoids with matching values', async () => {
+            mockFactoids();
+
+            const say = await runSearch('joe');
+
+            expect(say).toHaveBeenCalledWith({
+                text: 'Found: gif and joe key',
+                thread_ts: '123.456'
+            });
+        });
+
+        it('should report when neither keys nor values match', async () => {
+            mockFactoids();
+
+            const say = await runSearch('missing');
+
+            expect(say).toHaveBeenCalledWith({
+                text: "No factoids found matching 'missing'",
+                thread_ts: '123.456'
+            });
+        });
+    });
+
     describe('Pattern Matching', () => {
         // Helper function to process a message and determine if it triggers a factoid
         const shouldTriggerFactoid = (text: string): boolean => {
@@ -151,6 +278,113 @@ describe('Factoids Plugin', () => {
             shouldNotMatchPatterns.forEach(pattern => {
                 console.log(`"${pattern}" => ${shouldTriggerFactoid(pattern)}`);
             });
+        });
+    });
+
+    describe('Factoid Set Pattern Validation', () => {
+        // Tests use the exported isValidFactoidKey from the production code
+
+        const validKeys = [
+            'lullabot',
+            'drupal',
+            'project journal',
+            'the bot',
+            '<@U12345>',
+            'foo-bar',
+            'my-hyphenated-thing',
+        ];
+
+        const invalidKeys = [
+            'i see - i think your premise',
+            'i think your premise, actually',
+            'well... that',
+            'hey: so the thing',
+            'this is a really long factoid key that nobody would use',
+            'wait — hold on',
+        ];
+
+        describe('should accept valid factoid keys', () => {
+            validKeys.forEach(key => {
+                it(`should accept "${key}"`, () => {
+                    expect(isValidFactoidKey(key)).toBe(true);
+                });
+            });
+        });
+
+        describe('should reject conversational text as factoid keys', () => {
+            invalidKeys.forEach(key => {
+                it(`should reject "${key}"`, () => {
+                    expect(isValidFactoidKey(key)).toBe(false);
+                });
+            });
+        });
+    });
+
+    describe('Slack Link Formatting', () => {
+        // Test helper functions for escaping/unescaping Slack links
+        const escapeSlackLinks = (text: string): string => {
+            return text.replace(/<(https?:\/\/[^>|]+)(\|[^>]+)?>/g, '{$1$2}');
+        };
+
+        const unescapeSlackLinks = (text: string): string => {
+            return text.replace(/\{(https?:\/\/[^}|]+)(\|[^}]+)?\}/g, '<$1$2>');
+        };
+
+        it('should escape Slack links with display text', () => {
+            const input = '<https://example.com|Link Text>';
+            const expected = '{https://example.com|Link Text}';
+            expect(escapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should escape Slack links without display text', () => {
+            const input = '<https://example.com>';
+            const expected = '{https://example.com}';
+            expect(escapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should escape multiple Slack links in text', () => {
+            const input = 'View <https://github.com|GitHub> and <https://google.com|Google>';
+            const expected = 'View {https://github.com|GitHub} and {https://google.com|Google}';
+            expect(escapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should unescape Slack links with display text', () => {
+            const input = '{https://example.com|Link Text}';
+            const expected = '<https://example.com|Link Text>';
+            expect(unescapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should unescape Slack links without display text', () => {
+            const input = '{https://example.com}';
+            const expected = '<https://example.com>';
+            expect(unescapeSlackLinks(input)).toBe(expected);
+        });
+
+        it('should handle round-trip escaping and unescaping', () => {
+            const original = 'Check out <https://github.com/Lullabot/lullabot-slackbot|our repo> for more info';
+            const escaped = escapeSlackLinks(original);
+            const unescaped = unescapeSlackLinks(escaped);
+            expect(unescaped).toBe(original);
+        });
+
+        it('should preserve complex factoid with multiple links', () => {
+            const original = 'View the list: <https://github.com/orgs/Lullabot/repositories?q=topic%3Amirror+sort%3Aname-asc+archived%3Afalse|Current projects>, <https://github.com/orgs/Lullabot/repositories?q=topic%3Amirror+sort%3Aname-asc+archived%3Atrue|Historical projects>';
+            const escaped = escapeSlackLinks(original);
+            const unescaped = unescapeSlackLinks(escaped);
+            expect(unescaped).toBe(original);
+        });
+
+        it('should not modify text without Slack links', () => {
+            const input = 'This is plain text with no links';
+            expect(escapeSlackLinks(input)).toBe(input);
+            expect(unescapeSlackLinks(input)).toBe(input);
+        });
+
+        it('should handle mixed content with links and plain text', () => {
+            const original = 'Some text <https://example.com|link> more text';
+            const escaped = escapeSlackLinks(original);
+            expect(escaped).toBe('Some text {https://example.com|link} more text');
+            expect(unescapeSlackLinks(escaped)).toBe(original);
         });
     });
 }); 
