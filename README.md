@@ -280,6 +280,37 @@ The bot uses file-based JSON storage in the `data` directory for:
 
 The bot uses a modular plugin system. Each feature is implemented as a separate plugin in the `plugins` directory. New functionality can be added by creating new plugin files.
 
+### Plugin Configuration
+
+Plugins can be selectively disabled using the `DISABLED_PLUGINS` environment variable. This is a **deny-list**: every plugin loads unless you list it here, so newly added plugins are enabled automatically without touching each deployment's config. This is useful for:
+- Different deployment environments (e.g., production vs. staging)
+- Organization-specific configurations (e.g., Lullabot vs. Tugboat)
+- Testing without a specific plugin during development
+
+**Examples:**
+
+Disable specific plugins:
+```bash
+DISABLED_PLUGINS=add-prompt,conversions
+```
+
+Enable all plugins (default behavior):
+```bash
+# Don't set DISABLED_PLUGINS or leave it empty
+```
+
+Any name in `DISABLED_PLUGINS` that doesn't match a real plugin is logged as a warning at startup, so typos don't silently do nothing.
+
+**Available plugins:**
+- `karma` - Karma tracking system
+- `factoids` - Q&A storage and retrieval
+- `help` - Help and documentation
+- `uptime` - Bot uptime and identity
+- `botsnack` - Fun interactions
+- `hello` - Greeting responses
+- `conversions` - Unit conversions
+- `add-prompt` - Submit messages to prompt library
+
 ## Contributing
 
 1. Create a new plugin file in the `plugins` directory
@@ -382,6 +413,7 @@ This project uses environment variables for sensitive configuration:
 - `CLIENT_SIGNING_SECRET` - Slack app signing secret
 - `GITHUB_TOKEN` - GitHub Personal Access Token
 - `SLACK_SHARED_SECRET` - Shared secret for prompt library
+- `DISABLED_PLUGINS` (optional) - Comma-separated list of plugins to disable (e.g., `add-prompt,conversions`). If not set, all plugins are enabled by default.
 
 ### Security Features
 
