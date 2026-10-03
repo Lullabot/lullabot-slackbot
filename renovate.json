@@ -30,6 +30,12 @@
       "commitMessagePrefix": "chore(deps):"
     },
     {
+      "description": "Keep Slack SDK updates separate so they don't block automerge of the rest of production-dependencies",
+      "matchPackageNames": ["@slack/**"],
+      "groupName": "slack-sdk",
+      "commitMessagePrefix": "chore(deps):"
+    },
+    {
       "matchManagers": ["github-actions"],
       "groupName": "github-actions",
       "commitMessagePrefix": "ci:"
@@ -50,6 +56,11 @@
     },
     {
       "matchDepNames": ["node"],
+      "automerge": false
+    },
+    {
+      "description": "overrides are deliberate security pins (Sept 2025 npm hijack); always review bumps by hand",
+      "matchDepTypes": ["overrides"],
       "automerge": false
     }
   ]
