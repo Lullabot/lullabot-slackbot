@@ -2,14 +2,22 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    "schedule:earlyMondays",
     ":gitSignOff"
   ],
   "timezone": "America/New_York",
+  "schedule": ["* 0-5 * * *"],
+  "automergeSchedule": ["* 0-5 * * *"],
+  "automergeType": "pr",
+  "platformAutomerge": false,
+  "minimumReleaseAge": "3 days",
   "prConcurrentLimit": 10,
   "reviewers": ["sirkitree"],
   "assignees": ["sirkitree"],
   "commitMessagePrefix": "chore(deps):",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  },
   "packageRules": [
     {
       "matchDepTypes": ["devDependencies"],
@@ -25,6 +33,24 @@
       "matchManagers": ["github-actions"],
       "groupName": "github-actions",
       "commitMessagePrefix": "ci:"
+    },
+    {
+      "description": "Automerge non-major updates nightly once CI passes",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Majors and runtime-sensitive packages always need a human (TS7 broke the plugin loader; Slack payload changes only show under live traffic)",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "matchPackageNames": ["typescript", "@slack/**"],
+      "automerge": false
+    },
+    {
+      "matchDepNames": ["node"],
+      "automerge": false
     }
   ]
 }
